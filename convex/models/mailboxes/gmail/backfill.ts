@@ -3,6 +3,7 @@ import { defineBatchWorkerValidators, ping } from '@convex-dev/batch-worker'
 import { components, internal } from '../../../_generated/api'
 import { internalAction, internalMutation, internalQuery } from '../../../_generated/server'
 import { accessToken, gmailFetch } from '../../../lib/gmail'
+import { errorKind, wideEvent } from '../../../lib/log'
 import { track } from '../../../lib/pipeline'
 import { ingestGmailMessage } from '../utils'
 import type { Infer } from 'convex/values'
@@ -135,11 +136,16 @@ export const fetchBatch = internalAction({
   args: { items: v.array(vEntry) },
   returns: v.null(),
   handler: async (ctx, { items }): Promise<null> => {
+    const log = wideEvent({ job: 'backfill.batch', size: items.length, runs: [...byRun(items).keys()] })
     const retry: Array<Entry> = []
     const skipped: Array<Entry> = []
     const failed: Array<Entry> = []
-    const later = (item: Entry) =>
-      item.attempts + 1 < MAX_ATTEMPTS ? retry.push({ ...item, attempts: item.attempts + 1 }) : failed.push(item)
+    const errors: Record<string, number> = {}
+    let fetched = 0
+    const later = (item: Entry, e: unknown) => {
+      errors[errorKind(e)] = (errors[errorKind(e)] ?? 0) + 1
+      return item.attempts + 1 < MAX_ATTEMPTS ? retry.push({ ...item, attempts: item.attempts + 1 }) : failed.push(item)
+    }
 
     for (const mailboxId of new Set(items.map((i) => i.mailboxId))) {
       const mine = items.filter((i) => i.mailboxId === mailboxId)
@@ -158,18 +164,21 @@ export const fetchBatch = internalAction({
           }
           try {
             await ingestGmailMessage(ctx, token, mailboxId, item.gmailId, item.runId)
-          } catch {
-            later(item)
+            fetched++
+          } catch (e) {
+            later(item, e)
           }
         }
-      } catch {
-        mine.forEach(later)
+      } catch (e) {
+        mine.forEach((item) => later(item, e))
       }
     }
     if (retry.length) await ctx.runMutation(internal.models.mailboxes.gmail.backfill.enqueue, { items: retry })
     if (skipped.length || failed.length) {
       await ctx.runMutation(internal.models.mailboxes.gmail.backfill.report, { skipped, failed })
     }
+    log.set({ fetched, skipped: skipped.length, retried: retry.length, failed: failed.length, errors })
+    log.emit()
     return null
   },
 })

@@ -5,11 +5,13 @@ import { convexGateway } from '@convex-dev/ai-sdk-provider'
 import { components, internal } from '../../_generated/api'
 import { internalAction, internalMutation } from '../../_generated/server'
 import { toCleanMarkdown } from '../../lib/markdown'
+import { errorKind, wideEvent } from '../../lib/log'
 import { emailRef, track } from '../../lib/pipeline'
 import { vCategory, vRoute, vWorkflowAction } from '../../schema'
 import { loadMail } from './utils'
+import type { ActionCtx } from '../../_generated/server'
 import type { Infer } from 'convex/values'
-import type { Id } from '../../_generated/dataModel'
+import type { Doc, Id } from '../../_generated/dataModel'
 
 // "Jev latest" on the Convex AI Gateway; the alias moves with each stable Jev release.
 const JEV = '~typesafe/jev-latest'
@@ -85,78 +87,100 @@ export const classify = internalAction({
   handler: async (ctx, { messageId }): Promise<Judgment | null> => {
     const message = await ctx.runQuery(internal.models.messages.list.getInternal, { messageId })
     if (!message) return null
-    const [mailbox, mail, goals, workflows] = await Promise.all([
-      ctx.runQuery(internal.models.mailboxes.list.get, { mailboxId: message.mailboxId }),
-      loadMail(ctx, message),
-      ctx.runQuery(internal.models.goals.manage.forTriage, { userId: message.userId }),
-      ctx.runQuery(internal.models.jevWorkflows.manage.forTriage, {
-        userId: message.userId,
-        mailboxId: message.mailboxId,
-      }),
-    ])
-    const routes = goals.length ? ROUTES : { action: ROUTES.action, info: ROUTES.info, spam: ROUTES.spam }
-    // Asked in the same call, keyed by workflow id.
-    const custom = Object.fromEntries(
-      workflows.map((w) => [
-        w._id,
-        { type: 'boolean' as const, instructions: `\`recipient\` received \`email\`. ${w.condition}` },
-      ]),
-    )
-
-    // convexGateway mints the deployment-scoped token itself; no provider keys.
-    const { answers } = await decide({
-      model: convexGateway.evaluationModel(JEV),
-      state: {
-        recipient: mailbox?.address,
-        goals: goals.map((g) => (g.details ? `${g.title}: ${g.details}` : g.title)),
-        email: { from: `${mail.fromName} <${mail.from}>`, subject: mail.subject, body: toCleanMarkdown(mail) },
-      },
-      questions: {
-        route: { type: 'choice', instructions: 'Where does `email` belong for `recipient`?', criteria: routes },
-        urgency: {
-          type: 'score',
-          instructions: 'How soon does `recipient` need to deal with `email`?',
-          criteria: URGENCY,
-        },
-        category: { type: 'choice', instructions: 'Which kind of email is `email`?', criteria: CATEGORIES },
-        // Speculative: only read when the route is `goal`.
-        ...(goals.length
-          ? {
-              goal: {
-                type: 'choice' as const,
-                instructions: 'Which goal in `goals` does `email` move forward?',
-                criteria: {
-                  ...Object.fromEntries(goals.map((g) => [g._id, g.details ? `${g.title}: ${g.details}` : g.title])),
-                  [NO_GOAL]: 'None of these goals',
-                },
-              },
-            }
-          : {}),
-        ...custom,
-      },
-    })
-
-    // Guard the model's choices before storing them.
-    // `goal` is only offered when goals exist, so widen to every route before validating.
-    const route = answers.route.choice as Infer<typeof vRoute>
-    const category = answers.category.choice
-    if (!(route in ROUTES) || !(category in CATEGORIES)) {
-      throw new Error(`Unexpected Jev answer: ${route} / ${category}`)
-    }
-    const goalAnswer = answers.goal
-    const goalChoice: string | undefined = goalAnswer?.type === 'choice' ? goalAnswer.choice : undefined
-    return {
-      route,
-      routeProbabilities: answers.route.probabilities ?? { [route]: 1 },
-      goalId: route === 'goal' ? goals.find((g) => g._id === goalChoice)?._id : undefined,
-      urgency: answers.urgency.score,
-      category,
-      // The SDK returns the distribution, not a confidence score: keep the winner's share.
-      categoryConfidence: answers.category.probabilities?.[category] ?? 0,
-      matched: matchWorkflow(workflows, answers),
+    const log = wideEvent({ job: 'triage.classify', messageId, source: message.raw ? 'domain' : 'gmail', model: JEV })
+    try {
+      const judgment = await judge(ctx, message)
+      log.set({
+        route: judgment.route,
+        routeConfidence: judgment.routeProbabilities[judgment.route],
+        urgency: judgment.urgency,
+        category: judgment.category,
+        goalMatched: !!judgment.goalId,
+        workflowMatched: !!judgment.matched,
+      })
+      log.emit()
+      return judgment
+    } catch (e) {
+      // The workflow retries this step; the event records why it failed.
+      log.set({ failed: true, error: errorKind(e) })
+      log.emit()
+      throw e
     }
   },
 })
+
+const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment> => {
+  const [mailbox, mail, goals, workflows] = await Promise.all([
+    ctx.runQuery(internal.models.mailboxes.list.get, { mailboxId: message.mailboxId }),
+    loadMail(ctx, message),
+    ctx.runQuery(internal.models.goals.manage.forTriage, { userId: message.userId }),
+    ctx.runQuery(internal.models.jevWorkflows.manage.forTriage, {
+      userId: message.userId,
+      mailboxId: message.mailboxId,
+    }),
+  ])
+  const routes = goals.length ? ROUTES : { action: ROUTES.action, info: ROUTES.info, spam: ROUTES.spam }
+  // Asked in the same call, keyed by workflow id.
+  const custom = Object.fromEntries(
+    workflows.map((w) => [
+      w._id,
+      { type: 'boolean' as const, instructions: `\`recipient\` received \`email\`. ${w.condition}` },
+    ]),
+  )
+
+  // convexGateway mints the deployment-scoped token itself; no provider keys.
+  const { answers } = await decide({
+    model: convexGateway.evaluationModel(JEV),
+    state: {
+      recipient: mailbox?.address,
+      goals: goals.map((g) => (g.details ? `${g.title}: ${g.details}` : g.title)),
+      email: { from: `${mail.fromName} <${mail.from}>`, subject: mail.subject, body: toCleanMarkdown(mail) },
+    },
+    questions: {
+      route: { type: 'choice', instructions: 'Where does `email` belong for `recipient`?', criteria: routes },
+      urgency: {
+        type: 'score',
+        instructions: 'How soon does `recipient` need to deal with `email`?',
+        criteria: URGENCY,
+      },
+      category: { type: 'choice', instructions: 'Which kind of email is `email`?', criteria: CATEGORIES },
+      // Speculative: only read when the route is `goal`.
+      ...(goals.length
+        ? {
+            goal: {
+              type: 'choice' as const,
+              instructions: 'Which goal in `goals` does `email` move forward?',
+              criteria: {
+                ...Object.fromEntries(goals.map((g) => [g._id, g.details ? `${g.title}: ${g.details}` : g.title])),
+                [NO_GOAL]: 'None of these goals',
+              },
+            },
+          }
+        : {}),
+      ...custom,
+    },
+  })
+
+  // Guard the model's choices before storing them.
+  // `goal` is only offered when goals exist, so widen to every route before validating.
+  const route = answers.route.choice as Infer<typeof vRoute>
+  const category = answers.category.choice
+  if (!(route in ROUTES) || !(category in CATEGORIES)) {
+    throw new Error(`Unexpected Jev answer: ${route} / ${category}`)
+  }
+  const goalAnswer = answers.goal
+  const goalChoice: string | undefined = goalAnswer?.type === 'choice' ? goalAnswer.choice : undefined
+  return {
+    route,
+    routeProbabilities: answers.route.probabilities ?? { [route]: 1 },
+    goalId: route === 'goal' ? goals.find((g) => g._id === goalChoice)?._id : undefined,
+    urgency: answers.urgency.score,
+    category,
+    // The SDK returns the distribution, not a confidence score: keep the winner's share.
+    categoryConfidence: answers.category.probabilities?.[category] ?? 0,
+    matched: matchWorkflow(workflows, answers),
+  }
+}
 
 const matchWorkflow = (
   workflows: Array<{ _id: Id<'jevWorkflows'>; action: Infer<typeof vWorkflowAction> }>,

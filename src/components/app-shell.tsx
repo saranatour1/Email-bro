@@ -24,6 +24,7 @@ import type { Category, Status } from '~/lib/status'
 import { api } from '~/lib/api'
 import { LABELS, STATUSES, StatusIcon } from '~/lib/status'
 import { cn } from '~/lib/utils'
+import { Logo } from '~/components/logo'
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar'
 import { Button } from '~/components/ui/button'
 import {
@@ -99,9 +100,7 @@ const TopBar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
     <header className="flex h-12 shrink-0 items-center gap-2 px-3">
       <SidebarTrigger className="md:hidden" />
       <Link to="/mail/$view" params={{ view: 'focus' }} search={{ inbox }} className="flex items-center gap-2">
-        <span className="flex size-6 items-center justify-center rounded-full bg-linear-to-br from-fuchsia-500 via-rose-500 to-amber-400 text-white">
-          <Mail className="size-3.5" />
-        </span>
+        <Logo />
         <span className="font-heading text-sm font-semibold">Email Bro</span>
       </Link>
       <span className="text-muted-foreground">/</span>

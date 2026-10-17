@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useConvexAuth } from 'convex/react'
 import { useOauth, useSignInWithGoogle } from '@convex-dev/auth/methods/google/react'
-import { Mail } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { api } from '~/lib/api'
+import { Logo } from '~/components/logo'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
 
@@ -31,9 +31,7 @@ const SignIn = () => {
     <Centered>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-linear-to-br from-fuchsia-500 via-rose-500 to-amber-400 text-white">
-            <Mail className="size-5" />
-          </div>
+          <Logo className="mx-auto mb-2 size-12" />
           <CardTitle>Email Bro</CardTitle>
           <CardDescription>All your inboxes, sorted. Only what matters up top.</CardDescription>
         </CardHeader>

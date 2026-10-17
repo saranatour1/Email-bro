@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppBackfillRouteImport } from './routes/_app.backfill'
 import { Route as AppGoalsRouteImport } from './routes/_app.goals'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppWorkflowsRouteImport } from './routes/_app.workflows'
@@ -25,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppBackfillRoute = AppBackfillRouteImport.update({
+  id: '/backfill',
+  path: '/backfill',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppGoalsRoute = AppGoalsRouteImport.update({
   id: '/goals',
@@ -54,6 +60,7 @@ const AppMailViewMessageIdRoute = AppMailViewMessageIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/backfill': typeof AppBackfillRoute
   '/goals': typeof AppGoalsRoute
   '/settings': typeof AppSettingsRoute
   '/workflows': typeof AppWorkflowsRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/backfill': typeof AppBackfillRoute
   '/goals': typeof AppGoalsRoute
   '/settings': typeof AppSettingsRoute
   '/workflows': typeof AppWorkflowsRoute
@@ -72,6 +80,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/_app/backfill': typeof AppBackfillRoute
   '/_app/goals': typeof AppGoalsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/workflows': typeof AppWorkflowsRoute
@@ -82,6 +91,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/backfill'
     | '/goals'
     | '/settings'
     | '/workflows'
@@ -90,6 +100,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/backfill'
     | '/goals'
     | '/settings'
     | '/workflows'
@@ -99,6 +110,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/_app/backfill'
     | '/_app/goals'
     | '/_app/settings'
     | '/_app/workflows'
@@ -126,6 +138,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/backfill': {
+      id: '/_app/backfill'
+      path: '/backfill'
+      fullPath: '/backfill'
+      preLoaderRoute: typeof AppBackfillRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/goals': {
       id: '/_app/goals'
@@ -178,6 +197,7 @@ const AppMailViewRouteWithChildren = AppMailViewRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppBackfillRoute: typeof AppBackfillRoute
   AppGoalsRoute: typeof AppGoalsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppWorkflowsRoute: typeof AppWorkflowsRoute
@@ -185,6 +205,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBackfillRoute: AppBackfillRoute,
   AppGoalsRoute: AppGoalsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppWorkflowsRoute: AppWorkflowsRoute,

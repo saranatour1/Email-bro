@@ -18,6 +18,7 @@ export const ingestGmailMessage = async (
   token: string,
   mailboxId: Id<'mailboxes'>,
   gmailId: string,
+  backfillRunId?: Id<'backfillRuns'>,
 ) => {
   const params = new URLSearchParams({ format: 'metadata' })
   for (const name of ['From', 'Subject', 'Message-ID']) params.append('metadataHeaders', name)
@@ -29,6 +30,7 @@ export const ingestGmailMessage = async (
     mailboxId,
     externalId: msg.id,
     threadId: msg.threadId,
+    backfillRunId,
     mail: {
       rfcMessageId: header('Message-ID'),
       fromName: parseSender(header('From') ?? ''),

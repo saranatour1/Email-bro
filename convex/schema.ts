@@ -58,6 +58,8 @@ export default defineSchema({
     receivedAt: v.number(),
     // Domain mail has no mailbox to fetch from, so its raw email is kept AES-GCM encrypted.
     raw: v.optional(v.object({ fileId: v.id('_storage'), iv: v.string() })),
+    // Set when the email arrived through a backfill run, so sorting counts toward that run.
+    backfillRunId: v.optional(v.id('backfillRuns')),
     read: v.boolean(),
     status: vStatus,
     snoozedUntil: v.optional(v.number()),
@@ -93,6 +95,7 @@ export default defineSchema({
     mailboxId: v.id('mailboxes'),
     gmailId: v.string(),
     attempts: v.number(),
+    runId: v.optional(v.id('backfillRuns')),
     queuedAt: v.commitTs(),
   }).index('by_queuedAt', ['queuedAt']),
 
@@ -113,4 +116,23 @@ export default defineSchema({
     details: v.optional(v.string()),
     active: v.boolean(),
   }).index('by_userId', ['userId']),
+
+  // A user-started backfill; its counters (sharded) and event log are keyed by this id.
+  backfillRuns: defineTable({
+    userId: v.id('users'),
+    mailboxIds: v.array(v.id('mailboxes')),
+    days: v.number(),
+    startedAt: v.number(),
+  }).index('by_userId', ['userId']),
+
+  // The live log for the backfill tab. Hashed email refs, steps and decisions only; never content.
+  pipelineEvents: defineTable({
+    runId: v.id('backfillRuns'),
+    kind: literals('started', 'queued', 'claimed', 'skipped', 'fetched', 'sorted', 'retry', 'failed'),
+    ref: v.optional(v.string()),
+    count: v.optional(v.number()),
+    route: v.optional(vRoute),
+    label: v.optional(vCategory),
+    at: v.number(),
+  }).index('by_runId_and_at', ['runId', 'at']),
 })

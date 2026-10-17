@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsUpDown,
+  DatabaseZap,
   Inbox,
   LogOut,
   Mail,
@@ -190,7 +191,7 @@ const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
-  const page = (to: '/goals' | '/workflows' | '/settings', icon: ReactNode, label: string) => (
+  const page = (to: '/backfill' | '/goals' | '/workflows' | '/settings', icon: ReactNode, label: string) => (
     <SidebarMenuItem key={to}>
       <SidebarMenuButton asChild tooltip={label} className={itemClass}>
         <Link to={to} search={{ inbox }} activeProps={{ 'data-active': true }}>
@@ -238,6 +239,7 @@ const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
           )}
         </Section>
         <Section title="Automate">
+          {page('/backfill', <DatabaseZap />, 'Backfill')}
           {page('/goals', <Target />, 'Goals')}
           {page('/workflows', <WorkflowIcon />, 'Workflows')}
           {page('/settings', <Settings />, 'Mailboxes')}

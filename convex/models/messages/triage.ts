@@ -5,6 +5,7 @@ import { convexGateway } from '@convex-dev/ai-sdk-provider'
 import { components, internal } from '../../_generated/api'
 import { internalAction, internalMutation } from '../../_generated/server'
 import { toCleanMarkdown } from '../../lib/markdown'
+import { emailRef, track } from '../../lib/pipeline'
 import { vCategory, vRoute, vWorkflowAction } from '../../schema'
 import { loadMail } from './utils'
 import type { Infer } from 'convex/values'
@@ -186,6 +187,13 @@ export const saveTriage = internalMutation({
     const message = await ctx.db.get('messages', messageId)
     if (!message) return null
     const decided = { ...fields, jev: { ...jev, sortedAt: Date.now() }, triage: undefined }
+    if (message.backfillRunId) {
+      await track(ctx, message.backfillRunId, 'sorted', {
+        ref: await emailRef(message.externalId),
+        route: fields.route,
+        label: fields.category,
+      })
+    }
     // The user already moved it before Jev finished: keep their status, just record the decision.
     if (message.status !== 'inbox') {
       await ctx.db.patch('messages', messageId, decided)

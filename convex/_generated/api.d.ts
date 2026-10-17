@@ -9,6 +9,7 @@
  */
 
 import type * as api_auth from "../api/auth.js";
+import type * as api_backfill from "../api/backfill.js";
 import type * as api_goals from "../api/goals.js";
 import type * as api_mailboxes from "../api/mailboxes.js";
 import type * as api_messages from "../api/messages.js";
@@ -20,6 +21,8 @@ import type * as lib_functions from "../lib/functions.js";
 import type * as lib_gmail from "../lib/gmail.js";
 import type * as lib_mail from "../lib/mail.js";
 import type * as lib_markdown from "../lib/markdown.js";
+import type * as lib_pipeline from "../lib/pipeline.js";
+import type * as models_backfillRuns_run from "../models/backfillRuns/run.js";
 import type * as models_goals_manage from "../models/goals/manage.js";
 import type * as models_jevWorkflows_manage from "../models/jevWorkflows/manage.js";
 import type * as models_mailboxes_domain from "../models/mailboxes/domain.js";
@@ -47,6 +50,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "api/auth": typeof api_auth;
+  "api/backfill": typeof api_backfill;
   "api/goals": typeof api_goals;
   "api/mailboxes": typeof api_mailboxes;
   "api/messages": typeof api_messages;
@@ -58,6 +62,8 @@ declare const fullApi: ApiFromModules<{
   "lib/gmail": typeof lib_gmail;
   "lib/mail": typeof lib_mail;
   "lib/markdown": typeof lib_markdown;
+  "lib/pipeline": typeof lib_pipeline;
+  "models/backfillRuns/run": typeof models_backfillRuns_run;
   "models/goals/manage": typeof models_goals_manage;
   "models/jevWorkflows/manage": typeof models_jevWorkflows_manage;
   "models/mailboxes/domain": typeof models_mailboxes_domain;
@@ -109,4 +115,5 @@ export declare const components: {
   authGoogle: import("@convex-dev/auth/components/google/_generated/component.js").ComponentApi<"authGoogle">;
   workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
   batchWorker: import("@convex-dev/batch-worker/_generated/component.js").ComponentApi<"batchWorker">;
+  shardedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"shardedCounter">;
 };

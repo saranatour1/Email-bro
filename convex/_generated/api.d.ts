@@ -31,6 +31,7 @@ import type * as lib_pipeline from "../lib/pipeline.js";
 import type * as lib_runBusy from "../lib/runBusy.js";
 import type * as lib_snooze from "../lib/snooze.js";
 import type * as lib_triagePatch from "../lib/triagePatch.js";
+import type * as models_backfillRuns_migrate from "../models/backfillRuns/migrate.js";
 import type * as models_backfillRuns_run from "../models/backfillRuns/run.js";
 import type * as models_filters_manage from "../models/filters/manage.js";
 import type * as models_goals_manage from "../models/goals/manage.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   "lib/runBusy": typeof lib_runBusy;
   "lib/snooze": typeof lib_snooze;
   "lib/triagePatch": typeof lib_triagePatch;
+  "models/backfillRuns/migrate": typeof models_backfillRuns_migrate;
   "models/backfillRuns/run": typeof models_backfillRuns_run;
   "models/filters/manage": typeof models_filters_manage;
   "models/goals/manage": typeof models_goals_manage;

@@ -10,7 +10,7 @@ import {
   shouldSyncMailbox,
 } from '../convex/lib/gmailSync.ts'
 import { settingsError } from '../convex/lib/oauthError.ts'
-import { runBusy } from '../convex/lib/runBusy.ts'
+import { readingCount, runBusy } from '../convex/lib/runBusy.ts'
 import { weekendMorning } from '../convex/lib/snooze.ts'
 import { triagePatch } from '../convex/lib/triagePatch.ts'
 
@@ -168,9 +168,12 @@ assert(settingsError('access_denied') === 'access_denied', 'a known OAuth error 
 assert(settingsError('expired&connected=you@evil.test') === 'denied', 'an injected connected param is dropped')
 assert(settingsError(null) === 'denied', 'a missing OAuth error is denied')
 
-const done = { queued: 10, claimed: 10, fetched: 10, sorted: 10, skipped: 0, failed: 0, retry: 0 }
+const done = { queued: 10, claimed: 10, fetched: 10, sorted: 10, skipped: 0, failed: 0, retry: 0, parked: 0 }
 assert(runBusy(done) === false, 'a finished run is idle')
 assert(runBusy({ ...done, claimed: 0, fetched: 0, sorted: 0 }) === true, 'a queued run is busy')
 assert(runBusy({ ...done, sorted: 4 }) === true, 'mail still with Jev keeps the run busy')
+assert(runBusy({ ...done, sorted: 4, parked: 6 }) === false, 'emails held by Pause alone leave the run idle')
+assert(runBusy({ ...done, sorted: 4, parked: 2 }) === true, 'emails still with Jev keep the run busy beside held ones')
+assert(readingCount({ ...done, sorted: 4, parked: 2 }) === 4, 'reading leaves out held emails')
 
 console.log('sync bugs ok')

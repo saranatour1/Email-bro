@@ -1,0 +1,10 @@
+{
+  "name": "email-bro-inbound",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "vars": {
+    // Your Convex HTTP actions URL (VITE_CONVEX_SITE_URL in .env.local).
+    "CONVEX_SITE_URL": "https://zany-alpaca-474.convex.site",
+  },
+  // Secret, set with: npx wrangler secret put INBOUND_SECRET  (same value as the Convex env var)
+}

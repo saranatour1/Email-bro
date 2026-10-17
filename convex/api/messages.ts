@@ -8,4 +8,4 @@ export const { list, byRoute, get } = listApi
 export const { markRead, setStatus, snooze, setRoute } = statusApi
 export const { reply } = sendApi
 export const { read } = readApi
-export const { resortAll } = resortApi
+export const { resortAll, resortStatus, pauseResort, resumeResort, retryFailedTriage } = resortApi

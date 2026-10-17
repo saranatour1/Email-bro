@@ -1,7 +1,19 @@
 import { useState } from 'react'
-import { ChevronDown, Clock, Eye, EyeOff, HelpCircle, MoreHorizontal, RefreshCw, ScanText } from 'lucide-react'
+import {
+  ChevronDown,
+  Clock,
+  Eye,
+  EyeOff,
+  HelpCircle,
+  MoreHorizontal,
+  Pause,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  ScanText,
+} from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useMutation, usePaginatedQuery } from 'convex/react'
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import type { DragEvent, ReactNode } from 'react'
 import type { ListView } from '~/components/app-shell'
@@ -114,7 +126,14 @@ export const Board = ({
 // Shows the flow the board follows, and re-runs it on existing mail.
 const JevBar = () => {
   const resortAll = useMutation(api.messages.resortAll)
-  const [started, setStarted] = useState(false)
+  const pauseResort = useMutation(api.messages.pauseResort)
+  const resumeResort = useMutation(api.messages.resumeResort)
+  const retryFailedTriage = useMutation(api.messages.retryFailedTriage)
+  const worker = useQuery(api.messages.resortStatus)
+  const [retried, setRetried] = useState<number | null>(null)
+  const running = worker?.kind === 'running'
+  const paused = worker?.kind === 'stopped'
+
   return (
     <div className="flex h-10 shrink-0 items-center gap-2 border-b px-4 text-xs text-muted-foreground">
       <ScanText className="size-3.5" />
@@ -126,19 +145,31 @@ const JevBar = () => {
           {i < ROUTES.length - 1 && <span>·</span>}
         </span>
       ))}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="ml-auto h-7 text-xs"
-        disabled={started}
-        onClick={async () => {
-          setStarted(true)
-          await resortAll()
-        }}
-      >
-        <RefreshCw className={cn(started && 'animate-spin')} />
-        {started ? 'Re-sorting…' : 'Re-sort with Jev'}
-      </Button>
+      <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={async () => setRetried(await retryFailedTriage())}
+          title="Run Jev again on emails it couldn't read"
+        >
+          <RotateCcw /> {retried === null ? 'Retry failed' : `Retrying ${retried}`}
+        </Button>
+        {(running || paused) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => void (running ? pauseResort() : resumeResort())}
+          >
+            {running ? <Pause /> : <Play />} {running ? 'Pause re-sort' : 'Resume re-sort'}
+          </Button>
+        )}
+        <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={running} onClick={() => void resortAll()}>
+          <RefreshCw className={cn(running && 'animate-spin')} />
+          {running ? 'Re-sorting…' : 'Re-sort with Jev'}
+        </Button>
+      </div>
     </div>
   )
 }

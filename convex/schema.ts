@@ -132,7 +132,28 @@ export default defineSchema({
     mailboxIds: v.array(v.id('mailboxes')),
     days: v.number(),
     startedAt: v.number(),
+    paused: v.optional(v.boolean()),
+    // Listings that stopped early, with the exact args to continue them (Resume or Retry).
+    pending: v.optional(
+      v.array(
+        v.object({
+          mailboxId: v.id('mailboxes'),
+          query: v.string(),
+          limit: v.optional(v.number()),
+          pageToken: v.optional(v.string()),
+          reason: literals('paused', 'failed'),
+          error: v.optional(v.string()),
+        }),
+      ),
+    ),
   }).index('by_userId', ['userId']),
+
+  // Emails a backfill gave up on after every attempt; Retry puts them back in the queue.
+  backfillFailures: defineTable({
+    runId: v.id('backfillRuns'),
+    mailboxId: v.id('mailboxes'),
+    gmailId: v.string(),
+  }).index('by_runId', ['runId']),
 
   // The live log for the backfill tab. Hashed email refs, steps and decisions only; never content.
   pipelineEvents: defineTable({

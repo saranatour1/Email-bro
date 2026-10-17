@@ -1,5 +1,5 @@
 import { v } from 'convex/values'
-import { defineWorkflow } from '@convex-dev/workflow'
+import { defineWorkflow, vResultValidator, vWorkflowId } from '@convex-dev/workflow'
 import { experimental_decide as decide } from 'ai'
 import { convexGateway } from '@convex-dev/ai-sdk-provider'
 import { components, internal } from '../../_generated/api'
@@ -248,9 +248,11 @@ export const saveTriage = internalMutation({
       ...fields,
       jev: { ...jev, sortedAt: Date.now() },
       triage: undefined,
+      triageFailed: undefined,
       ...(markRead ? { read: true } : {}),
     }
-    if (message.backfillRunId) {
+    // Only an email's first decision counts toward its backfill run; re-sorts and retries don't.
+    if (message.backfillRunId && !message.jev) {
       await track(ctx, message.backfillRunId, 'sorted', {
         ref: await emailRef(message.externalId),
         route: fields.route,
@@ -267,6 +269,23 @@ export const saveTriage = internalMutation({
       ...decided,
       status: action ? (action === 'focus' ? 'inbox' : action) : spam ? 'spam' : 'inbox',
       focus: focus && !spam,
+    })
+    return null
+  },
+})
+
+// Runs when a triage workflow ends. If every retry failed, the email leaves Reading for Needs action.
+export const onTriageDone = internalMutation({
+  args: { workflowId: vWorkflowId, result: vResultValidator, context: v.object({ messageId: v.id('messages') }) },
+  returns: v.null(),
+  handler: async (ctx, { result, context: { messageId } }) => {
+    if (result.kind !== 'failed') return null
+    const message = await ctx.db.get('messages', messageId)
+    if (!message || message.route) return null
+    await ctx.db.patch('messages', messageId, {
+      route: 'action',
+      triageFailed: true,
+      focus: message.status === 'inbox',
     })
     return null
   },

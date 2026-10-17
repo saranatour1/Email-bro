@@ -347,6 +347,7 @@ const Card = ({
               <Clock className="size-3" /> Today
             </Pill>
           )}
+          {m.triageFailed && <Pill className="text-red-500">Couldn't read</Pill>}
           {top < UNSURE && (
             <Pill className="border-dashed" title={`Jev was ${Math.round(top * 100)}% sure; drag it if it's wrong`}>
               <HelpCircle className="size-3" /> Check me

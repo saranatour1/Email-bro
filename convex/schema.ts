@@ -74,6 +74,8 @@ export default defineSchema({
     triage: v.optional(v.any()),
     route: v.optional(vRoute),
     goalId: v.optional(v.id('goals')),
+    // Jev gave up on this email after every retry; it waits in Needs action for a person.
+    triageFailed: v.optional(v.boolean()),
     category: v.optional(vCategory),
     focus: v.optional(v.boolean()),
     // Raw Jev probabilities, kept so thresholds can change without asking Jev again.

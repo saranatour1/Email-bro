@@ -1,4 +1,6 @@
 import { ConvexError } from 'convex/values'
+import { start } from '@convex-dev/workflow'
+import { internal } from '../../_generated/api'
 import { accessToken, gmailFetch } from '../../lib/gmail'
 import { decrypt } from '../../lib/crypto'
 import { base64UrlToBytes, parseRaw } from '../../lib/mail'
@@ -23,3 +25,12 @@ export const loadMail = async (ctx: ActionCtx, message: Doc<'messages'>): Promis
   const { raw } = (await gmailFetch(token, `/messages/${message.externalId}?format=raw`)) as { raw: string }
   return parseRaw(base64UrlToBytes(raw))
 }
+
+// Every triage run reports back, so an email Jev gives up on doesn't stay in Reading.
+export const startTriage = (ctx: MutationCtx, messageId: Id<'messages'>) =>
+  start(
+    ctx,
+    internal.models.messages.triage.triageMessage,
+    { messageId },
+    { onComplete: internal.models.messages.triage.onTriageDone, context: { messageId } },
+  )

@@ -8,6 +8,7 @@ import { userAction, userMutation, userQuery } from '../../lib/functions'
 import { COUNTS, counterKey, counters, track } from '../../lib/pipeline'
 import { vCategory, vRoute } from '../../schema'
 import { WORKER, pingWorker } from '../mailboxes/gmail/backfill'
+import { startTriage } from '../messages/utils'
 import type { MutationCtx, QueryCtx } from '../../_generated/server'
 import type { Doc, Id } from '../../_generated/dataModel'
 
@@ -124,7 +125,8 @@ const getOwnedRun = async (ctx: MutationCtx & { userId: Id<'users'> }, runId: Id
   return run
 }
 
-// Pause stops the batch worker taking new batches; in-flight listings park themselves at the next page.
+// Pause stops the batch worker taking new batches; in-flight listings park themselves at the next page,
+// and emails already fetched park before Jev reads them.
 const pauseRun = userMutation({
   args: { runId: v.id('backfillRuns') },
   handler: async (ctx, { runId }) => {
@@ -144,6 +146,7 @@ const resumeRun = userMutation({
       pending: (run.pending ?? []).filter((p) => p.reason !== 'paused'),
     })
     await ctx.runMutation(components.batchWorker.lib.start, { name: WORKER })
+    await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
     for (const { mailboxId, query, limit, pageToken } of paused) {
       await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, {
         mailboxId,
@@ -251,6 +254,25 @@ export const clear = internalMutation({
       await counters.reset(ctx, counterKey(runId, name))
     }
     await ctx.db.delete('backfillRuns', runId)
+    return null
+  },
+})
+
+// Restarts Jev on emails that parked while the run was paused, 100 at a time.
+export const resumeTriage = internalMutation({
+  args: { runId: v.id('backfillRuns') },
+  returns: v.null(),
+  handler: async (ctx, { runId }) => {
+    if ((await ctx.db.get('backfillRuns', runId))?.paused) return null
+    const parked = await ctx.db
+      .query('messages')
+      .withIndex('by_backfillRunId_and_triageParked', (q) => q.eq('backfillRunId', runId).eq('triageParked', true))
+      .take(100)
+    for (const m of parked) {
+      await ctx.db.patch('messages', m._id, { triageParked: undefined })
+      await startTriage(ctx, m._id)
+    }
+    if (parked.length === 100) await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
     return null
   },
 })

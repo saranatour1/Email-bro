@@ -97,6 +97,11 @@ export const classify = internalAction({
   handler: async (ctx, { messageId }): Promise<Judgment | null> => {
     const message = await ctx.runQuery(internal.models.messages.list.getInternal, { messageId })
     if (!message) return null
+    const runId = message.backfillRunId
+    if (runId && (await ctx.runQuery(internal.models.mailboxes.gmail.backfill.isPaused, { runId }))) {
+      await ctx.runMutation(internal.models.messages.triage.parkTriage, { messageId })
+      return null
+    }
     const log = wideEvent({ job: 'triage.classify', messageId, source: message.raw ? 'domain' : 'gmail', model: JEV })
     try {
       const judgment = await judge(ctx, message)
@@ -275,6 +280,15 @@ export const saveTriage = internalMutation({
 })
 
 // Runs when a triage workflow ends. If every retry failed, the email leaves Reading for Needs action.
+export const parkTriage = internalMutation({
+  args: { messageId: v.id('messages') },
+  returns: v.null(),
+  handler: async (ctx, { messageId }) => {
+    await ctx.db.patch('messages', messageId, { triageParked: true })
+    return null
+  },
+})
+
 export const onTriageDone = internalMutation({
   args: { workflowId: vWorkflowId, result: vResultValidator, context: v.object({ messageId: v.id('messages') }) },
   returns: v.null(),
@@ -287,6 +301,10 @@ export const onTriageDone = internalMutation({
       triageFailed: true,
       focus: message.status === 'inbox',
     })
+    // It still lands in a column, so it counts as sorted and the run can finish.
+    if (message.backfillRunId) {
+      await track(ctx, message.backfillRunId, 'sorted', { ref: await emailRef(message.externalId), route: 'action' })
+    }
     return null
   },
 })

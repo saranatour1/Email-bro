@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useAction, useMutation } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
 import { ArrowRight, DatabaseZap, Inbox, Layers, Pause, Play, RotateCcw, ScanText, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'

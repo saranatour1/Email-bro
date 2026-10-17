@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { useAuthActions } from '@convex-dev/auth/react'
 import {
   Check,
@@ -28,6 +29,7 @@ import { cn } from '~/lib/utils'
 import { Logo } from '~/components/logo'
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar'
 import { Button } from '~/components/ui/button'
+import { ScrollArea } from '~/components/ui/scroll-area'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,6 +94,30 @@ export const AppShell = ({ inbox, children }: { inbox?: Id<'mailboxes'>; childre
 export const PageHeader = ({ children }: { children: ReactNode }) => {
   return <header className="flex h-11 shrink-0 items-center gap-2 border-b px-4">{children}</header>
 }
+
+// One frame for settings-style pages so headers, widths and scrolling match everywhere.
+export const Page = ({
+  title,
+  count,
+  actions,
+  children,
+}: {
+  title: string
+  count?: number
+  actions?: ReactNode
+  children: ReactNode
+}) => (
+  <>
+    <PageHeader>
+      <h1 className="font-mono text-sm">{title}</h1>
+      {count !== undefined && <span className="text-sm text-muted-foreground tabular-nums">{count}</span>}
+      {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
+    </PageHeader>
+    <ScrollArea className="min-h-0 flex-1">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">{children}</div>
+    </ScrollArea>
+  </>
+)
 
 const TopBar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
   const { results: mailboxes } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })

@@ -3,12 +3,17 @@ import { internal } from '../../../_generated/api'
 import { internalAction, internalMutation } from '../../../_generated/server'
 import { userMutation } from '../../../lib/functions'
 import { API, accessToken, gmailFetch } from '../../../lib/gmail'
-import { historyCursor, mergeLabelIds, shouldSyncMailbox } from '../../../lib/gmailSync'
+import {
+  CONNECT_BACKFILL,
+  historyCursor,
+  isGoneGmailMessage,
+  mergeLabelIds,
+  shouldSyncMailbox,
+} from '../../../lib/gmailSync'
 import { ingestGmailMessage } from '../utils'
 import schema from '../../../schema'
 import type { GmailHistoryPage } from '../../../lib/gmailSync'
 
-const BACKFILL = { query: 'in:inbox newer_than:30d', limit: 2000 }
 const MAX_PER_SYNC = 100
 const MAX_HISTORY_PAGES = 20
 const NEXT_PAGE_MS = 1000
@@ -43,7 +48,10 @@ export const sync = internalAction({
       if (!history) {
         // First sync, or the history cursor expired: restart history from now and backfill in the background.
         const { historyId } = (await gmailFetch(token, '/profile')) as { historyId: string }
-        await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, { mailboxId, ...BACKFILL })
+        await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, {
+          mailboxId,
+          ...CONNECT_BACKFILL,
+        })
         await ctx.runMutation(internal.models.mailboxes.gmail.sync.patch, {
           mailboxId,
           fields: { historyId, lastSyncedAt: Date.now(), status: 'active' },
@@ -56,7 +64,13 @@ export const sync = internalAction({
           externalIds: history.ids,
         }),
       )
-      for (const id of history.ids.filter((i) => !existing.has(i))) await ingestGmailMessage(ctx, token, mailboxId, id)
+      for (const id of history.ids.filter((i) => !existing.has(i))) {
+        try {
+          await ingestGmailMessage(ctx, token, mailboxId, id)
+        } catch (e) {
+          if (!isGoneGmailMessage(e)) throw e
+        }
+      }
       await ctx.runMutation(internal.models.mailboxes.gmail.sync.patch, {
         mailboxId,
         fields: {

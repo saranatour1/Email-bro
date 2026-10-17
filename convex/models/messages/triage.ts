@@ -8,6 +8,7 @@ import { toCleanMarkdown } from '../../lib/markdown'
 import { errorKind, wideEvent } from '../../lib/log'
 import { emailRef, track } from '../../lib/pipeline'
 import { vCategory, vRoute, vWorkflowAction } from '../../schema'
+import { triagePatch } from '../../lib/triagePatch'
 import { loadMail } from './utils'
 import type { ActionCtx } from '../../_generated/server'
 import type { Infer } from 'convex/values'
@@ -210,7 +211,6 @@ export const saveTriage = internalMutation({
   handler: async (ctx, { messageId, action, focus, jev, ...fields }) => {
     const message = await ctx.db.get('messages', messageId)
     if (!message) return null
-    const decided = { ...fields, jev: { ...jev, sortedAt: Date.now() }, triage: undefined }
     if (message.backfillRunId) {
       await track(ctx, message.backfillRunId, 'sorted', {
         ref: await emailRef(message.externalId),
@@ -218,17 +218,11 @@ export const saveTriage = internalMutation({
         label: fields.category,
       })
     }
-    // The user already moved it before Jev finished: keep their status, just record the decision.
-    if (message.status !== 'inbox') {
-      await ctx.db.patch('messages', messageId, decided)
-      return null
-    }
-    const spam = !action && fields.route === 'spam'
-    await ctx.db.patch('messages', messageId, {
-      ...decided,
-      status: action ? (action === 'focus' ? 'inbox' : action) : spam ? 'spam' : 'inbox',
-      focus: focus && !spam,
-    })
+    await ctx.db.patch(
+      'messages',
+      messageId,
+      triagePatch(message, { ...fields, action, focus, jev: { ...jev, sortedAt: Date.now() } }),
+    )
     return null
   },
 })

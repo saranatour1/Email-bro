@@ -1,6 +1,14 @@
 import { buildMime } from '../convex/lib/mail.ts'
-import { historyCursor, mergeLabelIds, shouldSyncMailbox } from '../convex/lib/gmailSync.ts'
+import {
+  CONNECT_BACKFILL,
+  gmailConnectPatch,
+  historyCursor,
+  isGoneGmailMessage,
+  mergeLabelIds,
+  shouldSyncMailbox,
+} from '../convex/lib/gmailSync.ts'
 import { weekendMorning } from '../convex/lib/snooze.ts'
+import { triagePatch } from '../convex/lib/triagePatch.ts'
 
 const assert = (cond: unknown, message: string) => {
   if (!cond) throw new Error(message)
@@ -83,5 +91,56 @@ const plain = buildMime({ from: 'a@b.co', to: 'c@d.co', subject: 'abc', text: 'a
 const plainSubject = plain.match(/Subject: =\?UTF-8\?B\?([^?]+)\?=/)?.[1] ?? ''
 assert(!plainSubject.endsWith('='), 'base64 that is already aligned stays unpadded')
 assert(decode(plainSubject) === 'abc', 'aligned subject decodes')
+
+const jev = { model: 'jev', routeProbabilities: { info: 0.9 }, urgency: 0, categoryConfidence: 0.8, sortedAt: 1 }
+const info = triagePatch(
+  { status: 'inbox', userMoved: true },
+  { route: 'spam', category: 'newsletters', focus: true, jev },
+)
+assert(!('route' in info) && !('status' in info) && !('focus' in info), 'a user placement keeps its column')
+assert(info.category === 'newsletters' && Object.hasOwn(info, 'triage'), 'a user placement still records the label')
+
+const spamDrag = triagePatch(
+  { status: 'spam', userMoved: true },
+  { route: 'info', goalId: 'g1', category: 'people', focus: false, jev },
+)
+assert(!('route' in spamDrag) && !('goalId' in spamDrag), 'a spam drag keeps the spam route')
+
+const late = triagePatch({ status: 'done' }, { route: 'action', category: 'people', focus: true, jev })
+assert(
+  'route' in late && late.route === 'action' && !('status' in late),
+  'mail that already left the inbox keeps its status',
+)
+
+const filed = triagePatch({ status: 'inbox' }, { route: 'spam', category: 'junk', focus: true, jev })
+assert(
+  'status' in filed && filed.status === 'spam' && filed.focus === false && filed.route === 'spam',
+  'Jev can still file untouched inbox mail',
+)
+
+const workflow = triagePatch(
+  { status: 'inbox' },
+  { route: 'action', category: 'people', focus: false, action: 'done', jev },
+)
+assert(
+  'status' in workflow && workflow.status === 'done' && workflow.focus === false,
+  'a matched workflow still moves untouched mail',
+)
+
+assert(isGoneGmailMessage(new Error('Gmail /messages/gone 404: missing')), 'a deleted message is skipped')
+assert(!isGoneGmailMessage(new Error('Gmail /messages/gone 429: quota')), 'a quota error still fails the sync')
+assert(!isGoneGmailMessage(new Error('Gmail history 404: expired')), 'a history 404 is not a missing message')
+assert(!isGoneGmailMessage(new Error('Gmail /messages/gone/modify 404: missing')), 'a modify 404 is not an ingest skip')
+
+assert(!('limit' in CONNECT_BACKFILL), 'connect backfill pages the whole 30 day window')
+assert(CONNECT_BACKFILL.query === 'in:inbox newer_than:30d', 'connect backfill stays on the inbox window')
+
+const reconnect = gmailConnectPatch('gmail', 'new-tip')
+assert(JSON.stringify(reconnect) === '{"status":"active"}', 'a Gmail reconnect keeps the old cursor')
+const takeover = gmailConnectPatch('domain', 'tip')
+assert(
+  JSON.stringify(takeover) === '{"status":"active","provider":"gmail","historyId":"tip"}',
+  'a domain row becomes a Gmail mailbox',
+)
 
 console.log('sync bugs ok')

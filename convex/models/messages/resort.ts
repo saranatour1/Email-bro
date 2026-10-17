@@ -56,7 +56,10 @@ export const startBatch = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
   handler: async (ctx, { ids }) => {
-    for (const messageId of ids) await start(ctx, internal.models.messages.triage.triageMessage, { messageId })
+    for (const messageId of ids) {
+      await ctx.db.patch('messages', messageId, { userMoved: undefined })
+      await start(ctx, internal.models.messages.triage.triageMessage, { messageId })
+    }
     return { debounceMs: BATCH_GAP_MS }
   },
 })

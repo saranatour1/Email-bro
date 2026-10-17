@@ -39,3 +39,15 @@ export const mergeLabelIds = (current: Record<string, string> | undefined, incom
   ...current,
   ...incoming,
 })
+
+// A deleted Gmail message 404s. Quota and 5xx must still fail the sync so the cursor stays put.
+export const isGoneGmailMessage = (error: unknown) =>
+  error instanceof Error && /^Gmail \/messages\/[^/? ]+ 404:/.test(error.message)
+
+export const CONNECT_BACKFILL = { query: 'in:inbox newer_than:30d' }
+
+// An existing Gmail row already has a history cursor. Replacing it skips mail that arrived while disconnected.
+export const gmailConnectPatch = (provider: 'gmail' | 'domain', historyId: string) =>
+  provider === 'gmail'
+    ? { status: 'active' as const, lastError: undefined }
+    : { status: 'active' as const, lastError: undefined, provider: 'gmail' as const, historyId }

@@ -11,7 +11,14 @@ const read = userAction({
     const message = await ctx.runQuery(internal.models.messages.list.getInternal, { messageId })
     if (!message || message.userId !== ctx.userId) throw new ConvexError('Message not found')
     const mail = await loadMail(ctx, message)
-    return { from: mail.from, to: mail.to, html: mail.html ?? null, text: mail.text, markdown: toCleanMarkdown(mail) }
+    return {
+      from: mail.from,
+      replyTo: mail.replyTo ?? null,
+      to: mail.to,
+      html: mail.html ?? null,
+      text: mail.text,
+      markdown: toCleanMarkdown(mail),
+    }
   },
 })
 

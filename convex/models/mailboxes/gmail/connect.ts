@@ -3,6 +3,7 @@ import { internal } from '../../../_generated/api'
 import { env, internalMutation, internalQuery } from '../../../_generated/server'
 import { userAction } from '../../../lib/functions'
 import { gmailFetch, tokenRequest } from '../../../lib/gmail'
+import { gmailConnectPatch } from '../../../lib/gmailSync'
 import schema from '../../../schema'
 import type { ActionCtx } from '../../../_generated/server'
 
@@ -94,7 +95,7 @@ export const upsertGmail = internalMutation({
     const mailboxId =
       existing?._id ??
       (await ctx.db.insert('mailboxes', { userId, address, provider: 'gmail', status: 'active', historyId }))
-    if (existing) await ctx.db.patch('mailboxes', mailboxId, { status: 'active', lastError: undefined })
+    if (existing) await ctx.db.patch('mailboxes', mailboxId, gmailConnectPatch(existing.provider, historyId))
     const secret = await ctx.db
       .query('mailboxSecrets')
       .withIndex('by_mailboxId', (q) => q.eq('mailboxId', mailboxId))

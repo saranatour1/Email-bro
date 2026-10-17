@@ -23,7 +23,7 @@ const setStatus = userMutation({
   args: { messageId: v.id('messages'), status: literals('inbox', 'in_progress', 'done', 'cancelled', 'spam') },
   handler: async (ctx, { messageId, status }) => {
     await getOwned(ctx, messageId)
-    await moveTo(ctx, messageId, status)
+    await moveTo(ctx, messageId, status, { userMoved: true })
   },
 })
 
@@ -35,7 +35,7 @@ const snooze = userMutation({
     if (until < now + SNOOZE_MIN_MS || until > now + 366 * 86_400_000) {
       throw new ConvexError('Pick a time between a minute and a year from now')
     }
-    await moveTo(ctx, messageId, 'snoozed', { snoozedUntil: until })
+    await moveTo(ctx, messageId, 'snoozed', { snoozedUntil: until, userMoved: true })
     await ctx.scheduler.runAt(until, internal.models.messages.status.wake, { messageId, until })
   },
 })
@@ -46,9 +46,14 @@ const setRoute = userMutation({
   handler: async (ctx, { messageId, route }) => {
     const message = await getOwned(ctx, messageId)
     const goalId = route === 'goal' ? message.goalId : undefined
-    if (route === 'spam') return await moveTo(ctx, messageId, 'spam', { route, goalId })
+    if (route === 'spam') return await moveTo(ctx, messageId, 'spam', { route, goalId, userMoved: true })
     const status = message.status === 'in_progress' ? 'in_progress' : 'inbox'
-    await moveTo(ctx, messageId, status, { route, goalId, focus: status === 'inbox' && route !== 'info' })
+    await moveTo(ctx, messageId, status, {
+      route,
+      goalId,
+      focus: status === 'inbox' && route !== 'info',
+      userMoved: true,
+    })
   },
 })
 

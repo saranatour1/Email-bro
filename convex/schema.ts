@@ -109,7 +109,7 @@ export default defineSchema({
     attempts: v.number(),
     runId: v.optional(v.id('backfillRuns')),
     queuedAt: v.commitTs(),
-  }).index('by_queuedAt', ['queuedAt']),
+  }).index('by_runId_and_queuedAt', ['runId', 'queuedAt']),
 
   // User-defined rules: when Jev decides `condition` holds for a new email, apply `action`.
   jevWorkflows: defineTable({

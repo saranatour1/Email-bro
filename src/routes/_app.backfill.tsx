@@ -33,7 +33,7 @@ const Backfill = () => {
     <>
       <RunControls
         running={status?.worker?.kind === 'running'}
-        sorting={!!status && status.counts.sorted < status.counts.fetched}
+        sorting={!!status && readingCount(status.counts) > 0}
         run={status?.run}
         failed={status?.counts.failed ?? 0}
       />
@@ -157,10 +157,12 @@ const RunControls = ({
   )
 }
 
+const readingCount = (counts: Counts) => Math.max(0, counts.fetched - counts.sorted - counts.parked)
+
 // The pipeline as a row of steps, each with its live count.
 const Flow = ({ counts, running }: { counts: Counts; running: boolean }) => {
   const inQueue = Math.max(0, counts.queued + counts.retry - counts.claimed)
-  const reading = Math.max(0, counts.fetched - counts.sorted - counts.parked)
+  const reading = readingCount(counts)
   const steps: Array<{ label: string; value: number; hint: string; icon: ReactNode; live?: boolean }> = [
     { label: 'Queued', value: counts.queued, hint: `${inQueue} waiting`, icon: <Inbox /> },
     {

@@ -341,7 +341,8 @@ const Card = ({
   draggable: boolean
 }) => {
   const label = display.labels && m.category && m.category !== column.view ? labelMeta(m.category) : undefined
-  const reading = column.route === 'reading'
+  const parked = column.route === 'reading' && !!m.triageParked
+  const reading = column.route === 'reading' && !parked
   const top = m.jev ? Math.max(...Object.values(m.jev.routeProbabilities)) : 1
   const justSorted = !!m.jev && Date.now() - m.jev.sortedAt < JUST_SORTED_MS && column.route !== undefined
 
@@ -372,8 +373,8 @@ const Card = ({
         {display.dates && <time className="shrink-0 text-xs text-muted-foreground">{shortDate(m.receivedAt)}</time>}
       </div>
       <span className={cn('line-clamp-2', !m.read && 'font-medium')}>{m.subject}</span>
-      {reading ? (
-        <span className="text-xs text-muted-foreground">Jev is reading…</span>
+      {reading || parked ? (
+        <span className="text-xs text-muted-foreground">{parked ? 'Paused, sorts on Resume' : 'Jev is reading…'}</span>
       ) : (
         <div className="mt-1 flex flex-wrap gap-1">
           {goal && <Pill className="text-emerald-500">{goal.title}</Pill>}

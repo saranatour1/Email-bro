@@ -97,7 +97,8 @@ export const classify = internalAction({
   handler: async (ctx, { messageId }): Promise<Judgment | null> => {
     const message = await ctx.runQuery(internal.models.messages.list.getInternal, { messageId })
     if (!message) return null
-    const runId = message.backfillRunId
+    // Only first sorts wait for Resume; re-sorts and retries of sorted mail aren't part of the backfill.
+    const runId = message.route ? undefined : message.backfillRunId
     if (runId && (await ctx.runQuery(internal.models.mailboxes.gmail.backfill.isPaused, { runId }))) {
       await ctx.runMutation(internal.models.messages.triage.parkTriage, { messageId, runId })
       return null

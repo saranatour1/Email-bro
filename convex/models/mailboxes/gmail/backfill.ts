@@ -31,12 +31,19 @@ const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBat
 
 export const WORKER = 'gmail-backfill'
 
-export const pingWorker = (ctx: MutationCtx) =>
-  ping(ctx, components.batchWorker, {
-    name: WORKER,
+// One worker per run, so pausing a run never stops anyone else's. Emails queued outside a run share WORKER.
+export const workerName = (runId?: Id<'backfillRuns'>) => (runId ? `${WORKER}:${runId}` : WORKER)
+const runOf = (name: string) => (name === WORKER ? undefined : (name.slice(WORKER.length + 1) as Id<'backfillRuns'>))
+
+export const pingWorker = async (ctx: MutationCtx, runId?: Id<'backfillRuns'>) => {
+  // Nothing pauses the shared worker any more, but one stopped by an older deploy would never wake on ping.
+  if (!runId) await ctx.runMutation(components.batchWorker.lib.start, { name: WORKER })
+  await ping(ctx, components.batchWorker, {
+    name: workerName(runId),
     workQuery: internal.models.mailboxes.gmail.backfill.getBatch,
     workerMutation: internal.models.mailboxes.gmail.backfill.claimBatch,
   })
+}
 
 // Items of one batch can belong to different runs (or none); count each run separately.
 const byRun = (items: Array<{ runId?: Id<'backfillRuns'> }>) => {
@@ -142,7 +149,7 @@ export const enqueue = internalMutation({
     for (const item of items) await ctx.db.insert('backfillQueue', { ...item, queuedAt: ctx.db.vars.commitTs })
     const retrying = items.some((i) => i.attempts > 0)
     for (const [runId, count] of byRun(items)) await track(ctx, runId, retrying ? 'retry' : 'queued', { count })
-    await pingWorker(ctx)
+    for (const runId of new Set(items.map((i) => i.runId))) await pingWorker(ctx, runId)
     return null
   },
 })
@@ -150,10 +157,10 @@ export const enqueue = internalMutation({
 export const getBatch = internalQuery({
   args: vQueryArgs,
   returns: vQueryReturns,
-  handler: async (ctx, { cursor }) => {
+  handler: async (ctx, { name, cursor }) => {
     const rows = await ctx.db
       .query('backfillQueue')
-      .withIndex('by_queuedAt', (q) => q.gte('queuedAt', cursor ?? 0n))
+      .withIndex('by_runId_and_queuedAt', (q) => q.eq('runId', runOf(name)).gte('queuedAt', cursor ?? 0n))
       .take(BATCH_SIZE)
     if (rows.length === 0) return { kind: 'idle' as const }
     return {

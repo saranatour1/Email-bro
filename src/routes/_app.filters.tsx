@@ -90,15 +90,15 @@ const Filters = () => {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr className="[&>th]:border-b [&>th]:px-3 [&>th]:py-2 [&>th]:font-normal">
-                <th>name</th>
+                <th className="w-36">name</th>
                 <th>matches</th>
-                <th>then</th>
-                <th>inbox</th>
-                <th>on</th>
-                <th>
+                <th className="w-48">then</th>
+                <th className="w-32">inbox</th>
+                <th className="w-12">on</th>
+                <th className="w-10">
                   <span className="sr-only">Delete</span>
                 </th>
               </tr>
@@ -107,14 +107,18 @@ const Filters = () => {
               {filters.map((f) => (
                 <tr key={f._id} className="align-top [&>td]:border-b [&>td]:px-3 [&>td]:py-2.5 last:[&>td]:border-b-0">
                   <td className="font-medium">{f.name}</td>
-                  <td className="max-w-72 font-mono text-xs text-muted-foreground">
-                    {f.from && <div>from: {f.from}</div>}
-                    {f.subject && <div>subject: {f.subject}</div>}
+                  <td>
+                    <div className="flex flex-col gap-1.5">
+                      {f.from && <Pattern field="from" value={f.from} />}
+                      {f.subject && <Pattern field="subject" value={f.subject} />}
+                    </div>
                   </td>
                   <td>
                     <Actions rule={f} />
                   </td>
-                  <td className="font-mono text-xs text-muted-foreground">{addressOf(f.mailboxId)}</td>
+                  <td className="truncate font-mono text-xs text-muted-foreground" title={addressOf(f.mailboxId)}>
+                    {addressOf(f.mailboxId)}
+                  </td>
                   <td>
                     <Switch
                       checked={f.enabled}
@@ -170,6 +174,22 @@ const Filters = () => {
     </Page>
   )
 }
+
+// One chip per `|` alternative, so long rules wrap instead of running into the next column.
+const Pattern = ({ field, value }: { field: string; value: string }) => (
+  <div className="flex flex-wrap items-center gap-1">
+    <span className="text-xs text-muted-foreground">{field}</span>
+    {value
+      .split('|')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => (
+        <code key={p} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] break-all">
+          {p}
+        </code>
+      ))}
+  </div>
+)
 
 const Actions = ({ rule }: { rule: Pick<Filter, 'route' | 'label' | 'status' | 'markRead'> }) => {
   const route = rule.route ? routeMeta(rule.route) : undefined

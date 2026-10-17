@@ -3,7 +3,7 @@ import { paginationOptsValidator } from 'convex/server'
 import { literals } from 'convex-helpers/validators'
 import { internalQuery } from '../../_generated/server'
 import { userQuery } from '../../lib/functions'
-import schema, { vCategory, vStatus } from '../../schema'
+import schema, { vCategory, vRoute, vStatus } from '../../schema'
 import { getOwned } from './utils'
 import type { Infer } from 'convex/values'
 
@@ -41,6 +41,32 @@ const list = userQuery({
   },
 })
 
+// A "By Jev" column. `reading` = Jev hasn't decided yet. Handled mail (done, snoozed…) leaves the board.
+const byRoute = userQuery({
+  args: {
+    route: v.union(vRoute, literals('reading')),
+    mailboxId: v.optional(v.id('mailboxes')),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { route, mailboxId, paginationOpts }) => {
+    const rows = ctx.db
+      .query('messages')
+      .withIndex('by_userId_and_route_and_receivedAt', (q) =>
+        q.eq('userId', ctx.userId).eq('route', route === 'reading' ? undefined : route),
+      )
+      .order('desc')
+    return await rows
+      // eslint-disable-next-line @convex-dev/no-filter-in-query -- shortcut: status/inbox filter over the route index; fine at personal scale.
+      .filter((q) =>
+        q.and(
+          route === 'spam' ? true : q.or(q.eq(q.field('status'), 'inbox'), q.eq(q.field('status'), 'in_progress')),
+          mailboxId ? q.eq(q.field('mailboxId'), mailboxId) : true,
+        ),
+      )
+      .paginate(paginationOpts)
+  },
+})
+
 const get = userQuery({
   args: { messageId: v.id('messages') },
   handler: async (ctx, { messageId }) => {
@@ -50,7 +76,7 @@ const get = userQuery({
   },
 })
 
-export const listApi = { list, get }
+export const listApi = { list, byRoute, get }
 
 export const getInternal = internalQuery({
   args: { messageId: v.id('messages') },

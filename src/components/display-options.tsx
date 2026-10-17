@@ -12,9 +12,14 @@ import {
   DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu'
 
-export type Display = { groupBy: 'status' | 'label'; labels: boolean; dates: boolean; hiddenColumns: Array<string> }
+export type Display = {
+  groupBy: 'jev' | 'status' | 'label'
+  labels: boolean
+  dates: boolean
+  hiddenColumns: Array<string>
+}
 
-const DEFAULTS: Display = { groupBy: 'status', labels: true, dates: true, hiddenColumns: [] }
+const DEFAULTS: Display = { groupBy: 'jev', labels: true, dates: true, hiddenColumns: [] }
 const KEY = 'email-bro:display'
 
 // Per-browser preference, so localStorage is enough; it may be unavailable (private mode).
@@ -68,6 +73,7 @@ export const DisplayMenu = ({
               value={display.groupBy}
               onValueChange={(v) => onChange({ groupBy: v as Display['groupBy'] })}
             >
+              <DropdownMenuRadioItem value="jev">By Jev</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="status">By status</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="label">By label</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>

@@ -3,6 +3,7 @@ import { literals } from 'convex-helpers/validators'
 import { internal } from '../../_generated/api'
 import { internalMutation } from '../../_generated/server'
 import { userMutation } from '../../lib/functions'
+import { vRoute } from '../../schema'
 import { getOwned } from './utils'
 import type { vStatus } from '../../schema'
 import type { MutationCtx } from '../../_generated/server'
@@ -38,7 +39,19 @@ const snooze = userMutation({
   },
 })
 
-export const statusApi = { markRead, setStatus, snooze }
+// Dragging a card to another "By Jev" column corrects Jev's decision for that email.
+const setRoute = userMutation({
+  args: { messageId: v.id('messages'), route: vRoute },
+  handler: async (ctx, { messageId, route }) => {
+    const message = await getOwned(ctx, messageId)
+    const goalId = route === 'goal' ? message.goalId : undefined
+    if (route === 'spam') return await moveTo(ctx, messageId, 'spam', { route, goalId })
+    const status = message.status === 'in_progress' ? 'in_progress' : 'inbox'
+    await moveTo(ctx, messageId, status, { route, goalId, focus: status === 'inbox' && route !== 'info' })
+  },
+})
+
+export const statusApi = { markRead, setStatus, snooze, setRoute }
 
 // A snooze ended: back to the top of Focus as unread. Re-snoozing makes older wake-ups no-ops.
 export const wake = internalMutation({

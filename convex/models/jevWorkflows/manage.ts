@@ -25,17 +25,13 @@ const list = userQuery({
 })
 
 const create = userMutation({
-  args: {
-    name: v.string(),
-    condition: v.string(),
-    action: vWorkflowAction,
-    mailboxId: v.optional(v.id('mailboxes')),
-  },
+  args: { name: v.string(), condition: v.string(), action: vWorkflowAction, mailboxId: v.optional(v.id('mailboxes')) },
   handler: async (ctx, { name, condition, action, mailboxId }) => {
     name = name.trim()
     condition = condition.trim()
     if (!name || name.length > 80) throw new ConvexError('Give the workflow a name (up to 80 characters)')
-    if (condition.length < 8 || condition.length > 500) throw new ConvexError('Describe the condition in 8–500 characters')
+    if (condition.length < 8 || condition.length > 500)
+      throw new ConvexError('Describe the condition in 8–500 characters')
     if (mailboxId && (await ctx.db.get('mailboxes', mailboxId))?.userId !== ctx.userId) {
       throw new ConvexError('Mailbox not found')
     }

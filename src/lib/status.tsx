@@ -1,9 +1,21 @@
-import { Bell, Megaphone, Newspaper, Receipt, Users } from 'lucide-react'
+import { Bell, CircleAlert, Info, Megaphone, Newspaper, Receipt, ShieldAlert, Target, Users } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { Doc } from '../../convex/_generated/dataModel'
 import { cn } from '~/lib/utils'
 
 export type Status = Doc<'messages'>['status']
 export type Category = NonNullable<Doc<'messages'>['category']>
+export type Route = NonNullable<Doc<'messages'>['route']>
+
+// Jev's four decisions, in board order.
+export const ROUTES: Array<{ id: Route; label: string; hint: string; icon: LucideIcon; color: string }> = [
+  { id: 'action', label: 'Needs action', hint: 'You have to do something', icon: CircleAlert, color: 'text-amber-500' },
+  { id: 'goal', label: 'Goal', hint: 'Moves one of your goals forward', icon: Target, color: 'text-emerald-500' },
+  { id: 'info', label: 'Info', hint: 'Nothing for you to do', icon: Info, color: 'text-sky-500' },
+  { id: 'spam', label: 'Spam', hint: "Mail you didn't ask for", icon: ShieldAlert, color: 'text-red-500' },
+]
+
+export const routeMeta = (id: Route) => ROUTES.find((r) => r.id === id) ?? ROUTES[2]
 
 export const STATUSES: Array<{ id: Status; label: string; color: string }> = [
   { id: 'inbox', label: 'Inbox', color: 'text-muted-foreground' },

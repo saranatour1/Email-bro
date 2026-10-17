@@ -6,28 +6,29 @@ Email Bro is one calm place for several inboxes (Gmail accounts plus addresses o
 
 - **Look it up first.** Before using a library, API or feature that's new to this codebase, read its current docs online. Don't write it from memory: Convex, Convex Auth v2, the AI SDK and the gateway all change quickly.
 - **Check the Convex components directory** ([convex.dev/components](https://www.convex.dev/components)) for a component that already does the job before building it by hand.
-- **Ask "do I need it?"** before adding a scheduled function or a cron. Most work belongs in the mutation or action that triggers it. Today's justified uses: `snooze` wake-ups (`scheduler.runAt`), Gmail write-back after a status change (it calls an external API, so it can't run inside the mutation), and the 5-minute Gmail sync cron (until Gmail push notifications replace it).
+- **Ask "do I need it?"** before adding a scheduled function or a cron. Most work belongs in the mutation or action that triggers it. Today's justified uses: `snooze` wake-ups (`scheduler.runAt`), and handing work from a mutation to an action that calls an external API (Gmail write-back, `syncNow`, backfill batches). There are no crons: Gmail syncs when the app opens.
 - **Keep it simple.** Before adding a function, ask whether you need a new function at all, and whether it needs to return anything.
 
 ## Product principles
 
 1. **No noise, no extra work.** The default view (Focus) shows only mail that needs the user. Everything else is filed, never thrown away.
-2. **Never lose mail.** Nothing permanently deletes an email. "Done", "Cancelled", "Spam" and filing all mean *archive* (remove Gmail's `INBOX` label). We only ask for `gmail.modify`, which can't permanently delete.
-3. **Never send without the user.** Mail only leaves when the user presses Send. No auto-replies and no AI-sent drafts.
-4. **One click beats a shortcut.** Every action is reachable with the mouse in one or two clicks.
-5. **The user's choice wins over the model's.** If the user changes a status before triage finishes, triage only adds labels.
+2. **Never store email content.** The database keeps only ids, the subject and the sender's name (or their domain when there's no name). Bodies, addresses and attachments are fetched from the mailbox when the user opens or answers an email, and never written down. That includes AI summaries and workflow step results. The one exception is domain mail, which has no mailbox to fetch from: its raw email is kept AES-GCM encrypted in file storage, with the key only in the `MAIL_ENCRYPTION_KEY` env var.
+3. **Never lose mail.** Nothing permanently deletes an email. "Done", "Cancelled", "Spam" and filing all mean _archive_ (remove Gmail's `INBOX` label). We only ask for `gmail.modify`, which can't permanently delete.
+4. **Never send without the user.** Mail only leaves when the user presses Send. No auto-replies and no AI-sent drafts.
+5. **One click beats a shortcut.** Every action is reachable with the mouse in one or two clicks.
+6. **The user's choice wins over the model's.** If the user changes a status before triage finishes, triage only adds labels.
 
 ## Stack and commands
 
-| Piece | Choice |
-| --- | --- |
-| Backend | Convex (`convex/`), cloud dev deployment in `.env.local` |
-| Auth | Convex Auth **v2 beta** (`@convex-dev/auth@2.0.0-beta.0`), Google sign-in |
-| Helpers | `convex-helpers`: use it whenever it already solves the problem (see below) |
-| Validation | Convex `v` validators, plus **Zod** or **ArkType**, whichever the project uses |
-| Durable jobs | `@convex-dev/workflow` |
-| AI | Convex AI Gateway through the AI SDK (`ai` + `@convex-dev/ai-sdk-provider`) |
-| Frontend | TanStack Start file routes, React 19, Tailwind v4, shadcn/ui |
+| Piece        | Choice                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| Backend      | Convex (`convex/`), cloud dev deployment in `.env.local`                                          |
+| Auth         | Convex Auth **v2 beta** (`@convex-dev/auth@2.0.0-beta.0`), Google sign-in                         |
+| Helpers      | `convex-helpers`: use it whenever it already solves the problem (see below)                       |
+| Validation   | Convex `v` validators, plus **Zod** or **ArkType**, whichever the project uses                    |
+| Durable jobs | `@convex-dev/workflow` (per-email triage), `@convex-dev/batch-worker` (Gmail backfill queue)      |
+| AI           | Convex AI Gateway through the AI SDK (`ai` + `@convex-dev/ai-sdk-provider`)                       |
+| Frontend     | TanStack Start file routes, React 19, Tailwind v4, shadcn/ui, TipTap (email bodies, reply editor) |
 
 ```bash
 pnpm dev                  # convex dev + vite on :3000
@@ -58,30 +59,38 @@ convex/
     messages.ts          # → api.messages.* on the client
     mailboxes.ts         # → api.mailboxes.*
     users.ts             # → api.users.*
+    workflows.ts         # → api.workflows.* (custom Jev workflows)
     auth.ts              # → api.auth.* (Convex Auth session + Google sign-in)
   models/
     messages/            # one folder per table
       list.ts            # one file per feature: list, get (public); getInternal
       status.ts          # markRead, setStatus, snooze (public); wake; moveTo()
+      read.ts            # read (public): the email, fetched live, never stored
       ingest.ts          # ingest, existingExternalIds
-      triage.ts          # the triage workflow: classify, summarize, saveTriage
+      triage.ts          # the triage workflow: classify (incl. custom workflows), saveTriage
       send.ts            # reply (public)
-      utils.ts           # helpers only this table uses (getOwned)
+      utils.ts           # getOwned, loadMail (Gmail fetch or decrypt)
     mailboxes/
       list.ts            # list (public); get, getByAddress
       domain.ts          # addDomainMailbox (public)
+      utils.ts           # ingestGmailMessage (metadata headers only)
       gmail/             # a big feature can be a folder
         connect.ts       # startGmailConnect (public); OAuth state, tokens, finishConnect()
-        sync.ts          # syncAll (cron), sync, listActiveGmail, patch
+        sync.ts          # syncNow (public, on app open), sync, patch
+        backfill.ts      # batch-worker queue: start, enqueue, getBatch, claimBatch, fetchBatch
         writeBack.ts     # applyTriage, syncInbox: mirror labels and status into Gmail
+    jevWorkflows/
+      manage.ts          # list, create, setEnabled, remove (public); forTriage
     users/
       auth.ts            # me (public); createUser, onSignIn (Convex Auth callbacks)
   lib/                   # helpers reused across tables
     functions.ts         # userQuery / userMutation / userAction (auth custom functions)
     gmail.ts             # Gmail REST + OAuth token helpers
-    mail.ts              # MIME parsing and building
-  schema.ts  http.ts  crons.ts  convex.config.ts  auth.config.ts
+    mail.ts              # MIME parsing and building (in memory only)
+    crypto.ts            # AES-GCM for domain mail, SHA-256 dedupe keys
+  schema.ts  http.ts  convex.config.ts  auth.config.ts
 ```
+
 - **API files** in `convex/api/` hold re-exports only, no logic. Anything the client needs gets added here:
   ```ts
   // convex/api/messages.ts
@@ -115,7 +124,7 @@ convex/
   ```
 - **Internal functions** are exported directly from their feature file (`internal.models.messages.ingest.ingest`). They don't go through an API file.
 - **Nothing public outside `api/`.** A `query`, `mutation` or `action` that isn't re-exported from `convex/api/` isn't reachable by the client. Grouping in feature files keeps it that way: they export the `…Api` object, never the function itself.
-- **Framework files stay at the root:** `schema.ts`, `http.ts`, `crons.ts`, `convex.config.ts`, `auth.config.ts`. Convex Auth's functions live in `api/auth.ts` like any other public function; its client takes them as references (`api.auth`), so the path doesn't matter to it.
+- **Framework files stay at the root:** `schema.ts`, `http.ts`, `convex.config.ts`, `auth.config.ts` (and `crons.ts` if one is ever justified). Convex Auth's functions live in `api/auth.ts` like any other public function; its client takes them as references (`api.auth`), so the path doesn't matter to it.
 
 ### Plain helpers (not Convex functions)
 
@@ -138,9 +147,9 @@ Read `convex/_generated/ai/guidelines.md` first. This project overrides it in tw
 - **When an action references its own module through `internal`** (workflows do), annotate the handler's return type, or TypeScript's inference turns circular.
 - **Secrets stay in `mailboxSecrets`.** Only internal functions read them.
 - **Every status change goes through one shared helper** (today `moveTo()`). It keeps `focus`, `snoozedUntil`, `read` and the Gmail inbox in step. Invariant: `focus === true` only while `status === 'inbox'`.
-- **Each list view needs two indexes**, one per user and one per mailbox (`by_userId_and_…` / `by_mailboxId_and_…`), because every view can be scoped to one inbox.
+- **Index sparingly.** One per-user index per view (`by_userId_and_<field>_and_receivedAt`), plus the dedupe index. Scoping to one inbox is a `.filter()` on that index (with its lint rule disabled and a `shortcut:` note); add a per-mailbox index only when it gets slow.
 - **Env vars are declared in `convex/convex.config.ts`** and read with `env` from `./_generated/server`, never `process.env`.
-- **Bound every query** with `.take(n)` or pagination.
+- **Use `.paginate()` whenever possible**, including fixed reads (`.paginate({ numItems: n, cursor: null })`). `.take(n)` only where an API needs exactly one batch, like a batch-worker work query; `.first()` / `.unique()` for single rows.
 
 ### Validation
 
@@ -151,15 +160,15 @@ Read `convex/_generated/ai/guidelines.md` first. This project overrides it in tw
 
 ### convex-helpers: reach for it first
 
-| Need | Use |
-| --- | --- |
-| Auth or shared context on every call | `customQuery` / `customMutation` / `customAction` |
-| Zod args | `convex-helpers/server/zod4` |
-| Reusable validators (`doc`, `partial`, `nullable`, `literals`) | `convex-helpers/validators` |
-| One-to-many / many-to-many lookups | `getOneFrom`, `getManyFrom`, `getManyVia` (`server/relationships`) |
-| Side effects on every write to a table | Triggers (`server/triggers`) |
-| Pagination across merged or filtered index ranges | `paginator`, QueryStreams (`server/stream`) |
-| Status, data and error from one client hook | `useQuery` from `convex-helpers/react` |
+| Need                                                           | Use                                                                |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Auth or shared context on every call                           | `customQuery` / `customMutation` / `customAction`                  |
+| Zod args                                                       | `convex-helpers/server/zod4`                                       |
+| Reusable validators (`doc`, `partial`, `nullable`, `literals`) | `convex-helpers/validators`                                        |
+| One-to-many / many-to-many lookups                             | `getOneFrom`, `getManyFrom`, `getManyVia` (`server/relationships`) |
+| Side effects on every write to a table                         | Triggers (`server/triggers`)                                       |
+| Pagination across merged or filtered index ranges              | `paginator`, QueryStreams (`server/stream`)                        |
+| Status, data and error from one client hook                    | `useQuery` from `convex-helpers/react`                             |
 
 Check the convex-helpers README before hand-rolling any of these.
 
@@ -177,7 +186,8 @@ Check the convex-helpers README before hand-rolling any of these.
 - **Jev decides, LLMs write.** Jev (`choice`, `boolean`, `score`) makes every judgment. A generative model only writes text the user reads.
 - **Store raw probabilities, keep policy in code.** Changing a threshold must never mean asking Jev again.
 - **One `decide` call for independent questions**, with one narrow judgment per question. Give state as named fields and refer to them in backticks. Always offer a way out (e.g. a `junk` category).
-- **Spend generation only where it's seen** (summaries for Focus mail only), and cap inputs and `maxOutputTokens`.
+- **No stored AI output that reveals content.** Store Jev's probabilities, not generated summaries. If generated text is ever needed, produce it on demand and return it, don't save it.
+- **Custom workflows ride along.** Each enabled workflow is one extra `boolean` question in the same `decide` call, keyed by its id; the first one at ≥ 0.7 applies. Cap the set (20) so one call stays small.
 - **Alpha APIs move.** Keep `/alpha/decisions` / `experimental_decide` calls in one place.
 
 ## Frontend structure
@@ -207,6 +217,7 @@ src/
 - **State goes in the URL.** The view and the open message are path params; the inbox scope is `?inbox=`. Links within `/mail` pass `search={true}`.
 - **Per-browser preferences** go in `localStorage`, wrapped in `try/catch`. Anything that must sync across devices goes in Convex.
 - **shadcn:** add components with `npx shadcn@latest add <name>` and answer **no** to overwrites. `cn` comes from the `cn` package.
+- **Email bodies render through TipTap** (`EmailBody`, read-only StarterKit). Its schema has no image or script nodes, so remote images and tracking pixels never load. Never render email HTML with `dangerouslySetInnerHTML`. The reply editor is TipTap too; send `editor.getText()`.
 
 ### TanStack Start
 
@@ -221,19 +232,20 @@ Follow the official docs ([overview](https://tanstack.com/start/latest/docs/fram
 
 ### Routes
 
-| Route file | URL | Purpose |
-| --- | --- | --- |
-| `index.tsx` | `/` | Redirects to `/mail/focus` |
-| `_app.tsx` | (pathless) | Auth gate, top bar, sidebar; `ssr: false`; validates `?inbox=` |
-| `_app.mail.$view.tsx` | `/mail/$view` | List or board; unknown views give `notFound()` |
-| `_app.mail.$view.$messageId.tsx` | `/mail/$view/$messageId` | Reader in the parent's `<Outlet />` |
-| `_app.settings.tsx` | `/settings` | Mailboxes |
+| Route file                       | URL                      | Purpose                                                        |
+| -------------------------------- | ------------------------ | -------------------------------------------------------------- |
+| `index.tsx`                      | `/`                      | Redirects to `/mail/focus`                                     |
+| `_app.tsx`                       | (pathless)               | Auth gate, top bar, sidebar; `ssr: false`; validates `?inbox=` |
+| `_app.mail.$view.tsx`            | `/mail/$view`            | List or board; unknown views give `notFound()`                 |
+| `_app.mail.$view.$messageId.tsx` | `/mail/$view/$messageId` | Reader in the parent's `<Outlet />`                            |
+| `_app.settings.tsx`              | `/settings`              | Mailboxes                                                      |
+| `_app.workflows.tsx`             | `/workflows`             | Custom Jev workflows                                           |
 
 ## Design system: Linear × Convex dashboard
 
 - **Frame (Convex):** a 48 px top bar (logo · `/` · inbox switcher · health pill · avatar); below it the sidebar and an inset, rounded, bordered content panel. Collapse control at the bottom of the sidebar.
 - **Palette:** warm graphite tokens (oklch hue ≈ 70) in `src/styles/app.css`, light and dark; indigo `--ring` for focus and the active item. Use tokens, not raw colors. The exceptions are status and label colors (from `lib/status.tsx`) and health colors: emerald = healthy, amber = needs attention.
-- **Type:** Inter for UI; JetBrains Mono for machine values (addresses, table cells, counts).
+- **Type:** Plus Jakarta Sans for UI text, Sora for headings, card titles and the wordmark (`font-heading`), JetBrains Mono for machine values (addresses, table cells, counts). All self-hosted with Fontsource (`@fontsource-variable/*`, imported in `app.css`); no Google Fonts requests.
 - **Density (Linear):** sidebar items `h-7` at 13 px; rows `h-10` at 13 px; headers `h-11`; date bands `h-9`.
 - **Active nav:** `bg-sidebar-accent` plus `ring-1 ring-sidebar-ring/50`.
 - **Lists:** collapsible date bands; rows read status → sender → subject → preview → pills → date, with no divider lines. Chips use `<Pill>`, and status glyphs only `<StatusIcon>`.

@@ -17,6 +17,15 @@
   .using-mouse * {
     outline: none !important;
   }
+  /* Thin, themed scrollbars everywhere (native overflow areas like board columns). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent) transparent;
+  }
+  /* Radix wraps scroll content in display:table, which lets long lines push past the panel width. */
+  [data-slot='scroll-area-viewport'] > div {
+    display: block !important;
+  }
   * {
     @apply border-border outline-ring/50;
   }

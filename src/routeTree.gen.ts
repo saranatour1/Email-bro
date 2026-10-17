@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppGoalsRouteImport } from './routes/_app.goals'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppWorkflowsRouteImport } from './routes/_app.workflows'
 import { Route as AppMailViewRouteImport } from './routes/_app.mail.$view'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppGoalsRoute = AppGoalsRouteImport.update({
+  id: '/goals',
+  path: '/goals',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
@@ -48,6 +54,7 @@ const AppMailViewMessageIdRoute = AppMailViewMessageIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/goals': typeof AppGoalsRoute
   '/settings': typeof AppSettingsRoute
   '/workflows': typeof AppWorkflowsRoute
   '/mail/$view': typeof AppMailViewRouteWithChildren
@@ -55,6 +62,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/goals': typeof AppGoalsRoute
   '/settings': typeof AppSettingsRoute
   '/workflows': typeof AppWorkflowsRoute
   '/mail/$view': typeof AppMailViewRouteWithChildren
@@ -64,6 +72,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/_app/goals': typeof AppGoalsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/workflows': typeof AppWorkflowsRoute
   '/_app/mail/$view': typeof AppMailViewRouteWithChildren
@@ -72,14 +81,25 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/settings' | '/workflows' | '/mail/$view' | '/mail/$view/$messageId'
+    | '/'
+    | '/goals'
+    | '/settings'
+    | '/workflows'
+    | '/mail/$view'
+    | '/mail/$view/$messageId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/settings' | '/workflows' | '/mail/$view' | '/mail/$view/$messageId'
+    | '/'
+    | '/goals'
+    | '/settings'
+    | '/workflows'
+    | '/mail/$view'
+    | '/mail/$view/$messageId'
   id:
     | '__root__'
     | '/'
     | '/_app'
+    | '/_app/goals'
     | '/_app/settings'
     | '/_app/workflows'
     | '/_app/mail/$view'
@@ -106,6 +126,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/goals': {
+      id: '/_app/goals'
+      path: '/goals'
+      fullPath: '/goals'
+      preLoaderRoute: typeof AppGoalsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/settings': {
       id: '/_app/settings'
@@ -151,12 +178,14 @@ const AppMailViewRouteWithChildren = AppMailViewRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppGoalsRoute: typeof AppGoalsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppWorkflowsRoute: typeof AppWorkflowsRoute
   AppMailViewRoute: typeof AppMailViewRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppGoalsRoute: AppGoalsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppWorkflowsRoute: AppWorkflowsRoute,
   AppMailViewRoute: AppMailViewRouteWithChildren,

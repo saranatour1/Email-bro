@@ -3,6 +3,7 @@ import { paginationOptsValidator } from 'convex/server'
 import { literals } from 'convex-helpers/validators'
 import { internalQuery } from '../../_generated/server'
 import { userQuery } from '../../lib/functions'
+import { boardStatuses } from '../../lib/board'
 import schema, { vCategory, vRoute, vStatus } from '../../schema'
 import { getOwned } from './utils'
 import type { Infer } from 'convex/values'
@@ -55,14 +56,16 @@ const byRoute = userQuery({
         q.eq('userId', ctx.userId).eq('route', route === 'reading' ? undefined : route),
       )
       .order('desc')
+    const statuses = boardStatuses(route)
     return await rows
       // eslint-disable-next-line @convex-dev/no-filter-in-query -- shortcut: status/inbox filter over the route index; fine at personal scale.
-      .filter((q) =>
-        q.and(
-          route === 'spam' ? true : q.or(q.eq(q.field('status'), 'inbox'), q.eq(q.field('status'), 'in_progress')),
-          mailboxId ? q.eq(q.field('mailboxId'), mailboxId) : true,
-        ),
-      )
+      .filter((q) => {
+        const [first, second, third] = statuses
+        const statusMatch = third
+          ? q.or(q.eq(q.field('status'), first), q.eq(q.field('status'), second), q.eq(q.field('status'), third))
+          : q.or(q.eq(q.field('status'), first), q.eq(q.field('status'), second))
+        return q.and(statusMatch, mailboxId ? q.eq(q.field('mailboxId'), mailboxId) : true)
+      })
       .paginate(paginationOpts)
   },
 })

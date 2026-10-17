@@ -65,7 +65,10 @@ const retryFailedTriage = userMutation({
       .order('desc')
       .paginate({ numItems: 200, cursor: null })
     const failed = page.filter((m) => m.triageFailed)
-    for (const m of failed) await startTriage(ctx, m._id)
+    for (const m of failed) {
+      await ctx.db.patch('messages', m._id, { userMoved: undefined })
+      await startTriage(ctx, m._id)
+    }
     return failed.length
   },
 })
@@ -92,7 +95,10 @@ export const startBatch = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
   handler: async (ctx, { ids }) => {
-    for (const messageId of ids) await startTriage(ctx, messageId)
+    for (const messageId of ids) {
+      await ctx.db.patch('messages', messageId, { userMoved: undefined })
+      await startTriage(ctx, messageId)
+    }
     return { debounceMs: BATCH_GAP_MS }
   },
 })

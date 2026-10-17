@@ -1,5 +1,6 @@
 import { useMutation } from 'convex/react'
 import { Check, Clock } from 'lucide-react'
+import { weekendMorning } from '../../convex/lib/snooze'
 import type { Id } from '../../convex/_generated/dataModel'
 import type { Status } from '~/lib/status'
 import { api } from '~/lib/api'
@@ -27,7 +28,7 @@ const at = (days: number, hour: number) => {
 export const SNOOZE_OPTIONS = [
   { label: 'Later today', until: () => Date.now() + 3 * 3_600_000 },
   { label: 'Tomorrow morning', until: () => at(1, 9) },
-  { label: 'This weekend', until: () => at((6 - new Date().getDay() + 7) % 7 || 7, 9) },
+  { label: 'This weekend', until: () => weekendMorning() },
   { label: 'Next week', until: () => at((8 - new Date().getDay()) % 7 || 7, 9) },
 ]
 

@@ -32,7 +32,7 @@ const Backfill = () => {
   return (
     <>
       <RunControls
-        running={status?.worker?.kind === 'running'}
+        running={status?.running === true}
         sorting={!!status && readingCount(status.counts) > 0}
         run={status?.run}
         failed={status?.counts.failed ?? 0}
@@ -41,7 +41,7 @@ const Backfill = () => {
         <ScrollArea className="min-h-0 flex-1">
           {status ? (
             <div className="flex flex-col gap-6 p-6">
-              <Flow counts={status.counts} running={status.worker?.kind === 'running'} />
+              <Flow counts={status.counts} running={status.running} />
               <Lanes routes={status.routes} events={events.results} />
               <Labels labels={status.labels} />
             </div>

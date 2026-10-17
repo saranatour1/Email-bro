@@ -69,11 +69,9 @@ const ensureLabel = async (
   const { labels = [] } = (await gmailFetch(token, '/labels')) as { labels?: Array<{ id: string; name: string }> }
   const id =
     labels.find((l) => l.name === name)?.id ?? ((await gmailFetch(token, '/labels', { name })) as { id: string }).id
-  // Re-read so concurrent triage steps don't drop each other's label ids.
-  const fresh = await ctx.runQuery(internal.models.mailboxes.list.get, { mailboxId: mailbox._id })
   await ctx.runMutation(internal.models.mailboxes.gmail.sync.patch, {
     mailboxId: mailbox._id,
-    fields: { gmailLabelIds: { ...fresh?.gmailLabelIds, [category]: id } },
+    fields: { gmailLabelIds: { [category]: id } },
   })
   return id
 }

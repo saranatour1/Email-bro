@@ -9,7 +9,8 @@
     "build": "npm run typecheck && vite build",
     "start": "node .output/server/index.mjs",
     "format": "prettier --write .",
-    "lint": "npm run typecheck && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "npm run typecheck && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "node --experimental-strip-types tests/sync-bugs.test.ts"
   },
   "dependencies": {
     "@convex-dev/ai-sdk-provider": "^0.3.0",

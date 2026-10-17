@@ -272,6 +272,10 @@ export const resumeTriage = internalMutation({
       await ctx.db.patch('messages', m._id, { triageParked: undefined })
       await startTriage(ctx, m._id)
     }
+    // Emails parked before the counter existed were never counted, so never go below zero.
+    const key = counterKey(runId, 'parked')
+    const counted = Math.min(parked.length, await counters.count(ctx, key))
+    if (counted > 0) await counters.subtract(ctx, key, counted)
     if (parked.length === 100) await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
     return null
   },

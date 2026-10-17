@@ -160,7 +160,7 @@ const RunControls = ({
 // The pipeline as a row of steps, each with its live count.
 const Flow = ({ counts, running }: { counts: Counts; running: boolean }) => {
   const inQueue = Math.max(0, counts.queued + counts.retry - counts.claimed)
-  const reading = Math.max(0, counts.fetched - counts.sorted)
+  const reading = Math.max(0, counts.fetched - counts.sorted - counts.parked)
   const steps: Array<{ label: string; value: number; hint: string; icon: ReactNode; live?: boolean }> = [
     { label: 'Queued', value: counts.queued, hint: `${inQueue} waiting`, icon: <Inbox /> },
     {
@@ -171,7 +171,13 @@ const Flow = ({ counts, running }: { counts: Counts; running: boolean }) => {
       live: running,
     },
     { label: 'Fetched', value: counts.fetched, hint: `${counts.skipped} already had`, icon: <DatabaseZap /> },
-    { label: 'Jev reading', value: reading, hint: 'clean Markdown in', icon: <ScanText />, live: reading > 0 },
+    {
+      label: 'Jev reading',
+      value: reading,
+      hint: counts.parked > 0 ? `${counts.parked} paused` : 'clean Markdown in',
+      icon: <ScanText />,
+      live: reading > 0,
+    },
     {
       label: 'Sorted',
       value: counts.sorted,

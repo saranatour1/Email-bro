@@ -6,8 +6,8 @@ import type { MutationCtx } from '../_generated/server'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { vCategory, vRoute } from '../schema'
 
-// Many concurrent batches bump the same totals; shards keep those writes from conflicting.
-export const counters = new ShardedCounter(components.shardedCounter, { defaultShards: 4 })
+// One shard per key keeps the live status query to one read per counter; raise it if writes start to conflict.
+export const counters = new ShardedCounter(components.shardedCounter, { defaultShards: 1 })
 
 export const COUNTS = ['queued', 'claimed', 'skipped', 'fetched', 'sorted', 'retry', 'failed'] as const
 export type Count = (typeof COUNTS)[number]
@@ -15,7 +15,6 @@ export const counterKey = (runId: Id<'backfillRuns'>, name: string) => `${runId}
 
 // A short keyed hash of an email id: stable per email, meaningless without ID_HASH_KEY.
 export const emailRef = async (externalId: string) => {
-  if (!env.ID_HASH_KEY) throw new Error('ID_HASH_KEY is not set')
   const enc = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',

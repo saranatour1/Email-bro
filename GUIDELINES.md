@@ -149,7 +149,7 @@ Read `convex/_generated/ai/guidelines.md` first. This project overrides it in tw
 - **Every status change goes through one shared helper** (today `moveTo()`). It keeps `focus`, `snoozedUntil`, `read` and the Gmail inbox in step. Invariant: `focus === true` only while `status === 'inbox'`.
 - **Index sparingly.** One per-user index per view (`by_userId_and_<field>_and_receivedAt`), plus the dedupe index. Scoping to one inbox is a `.filter()` on that index (with its lint rule disabled and a `shortcut:` note); add a per-mailbox index only when it gets slow.
 - **Env vars are declared in `convex/convex.config.ts`** and read with `env` from `./_generated/server`, never `process.env`.
-- **Use `.paginate()` whenever possible**, including fixed reads (`.paginate({ numItems: n, cursor: null })`). `.take(n)` only where an API needs exactly one batch, like a batch-worker work query; `.first()` / `.unique()` for single rows.
+- **Use `.paginate()` whenever possible, but only once per query or mutation.** That includes fixed reads (`.paginate({ numItems: n, cursor: null })`). Convex throws "ran multiple paginated queries" on a second one, so any further read in the same function uses `.take(n)`, as does a batch-worker work query; `.first()` / `.unique()` for single rows.
 
 ### Validation
 

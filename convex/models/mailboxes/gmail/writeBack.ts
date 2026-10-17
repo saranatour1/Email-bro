@@ -46,6 +46,8 @@ export const syncInbox = internalAction({
     if (mailbox?.provider !== 'gmail') return null
     const token = await accessToken(ctx, mailbox._id)
     const inInbox = message.status === 'in_progress' || (message.status === 'inbox' && message.focus === true)
+    // With "archive in gmail" off, Email Bro never takes mail out of the Gmail inbox.
+    if (!inInbox && mailbox.autoArchive === false) return null
     await gmailFetch(
       token,
       `/messages/${message.externalId}/modify`,

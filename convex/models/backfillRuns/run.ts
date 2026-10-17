@@ -28,11 +28,12 @@ const startRun = userMutation({
     )
     if (mailboxes.length === 0) throw new ConvexError('Connect a Gmail account first')
 
+    // Convex allows one .paginate() per function, so this second, fixed read uses .take().
     const previous = await ctx.db
       .query('backfillRuns')
       .withIndex('by_userId', (q) => q.eq('userId', ctx.userId))
-      .paginate({ numItems: 10, cursor: null })
-    for (const run of previous.page)
+      .take(10)
+    for (const run of previous)
       await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.clear, { runId: run._id })
 
     const runId = await ctx.db.insert('backfillRuns', {

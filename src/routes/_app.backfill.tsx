@@ -44,7 +44,7 @@ const Backfill = () => {
           )}
         </ScrollArea>
         <aside className="flex w-[26rem] shrink-0 flex-col border-l">
-          <LiveLog events={events.results} startedAt={status?.run.startedAt} />
+          <LiveLog events={events.results} startedAt={status?.run.startedAt} sorted={status?.counts.sorted ?? 0} />
           {runId && <Study runId={runId} />}
         </aside>
       </div>
@@ -229,10 +229,10 @@ const clock = (ms: number) =>
   `.${String(ms % 1000).padStart(3, '0')}`
 
 // Convex-dashboard-style log stream of the run, with live throughput.
-const LiveLog = ({ events, startedAt }: { events: Array<Event>; startedAt?: number }) => {
+const LiveLog = ({ events, startedAt, sorted }: { events: Array<Event>; startedAt?: number; sorted: number }) => {
   const latest = events.at(0)?.at ?? 0
   const lastMinute = events.filter((e) => e.kind === 'sorted' && latest - e.at < 60_000).length
-  const sorted = events.filter((e) => e.kind === 'sorted').length
+  // The average uses the run's sorted counter, not just the loaded page of events.
   const minutes = startedAt && latest > startedAt ? (latest - startedAt) / 60_000 : 0
 
   return (

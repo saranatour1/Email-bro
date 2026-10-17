@@ -24,7 +24,7 @@ const app = defineApp({
     // AES-256 key (base64url) for domain mail at rest. Lives only here, never in the database.
     MAIL_ENCRYPTION_KEY: v.optional(v.string()),
     // Secret for the HMAC refs shown instead of real email ids on the backfill tab. Set your own.
-    ID_HASH_KEY: v.optional(v.string()),
+    ID_HASH_KEY: v.string(),
   },
 })
 

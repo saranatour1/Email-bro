@@ -1,9 +1,9 @@
 import { v } from 'convex/values'
 import { defineBatchWorkerValidators, ping } from '@convex-dev/batch-worker'
-import { start } from '@convex-dev/workflow'
 import { components, internal } from '../../_generated/api'
 import { internalMutation, internalQuery } from '../../_generated/server'
 import { userMutation } from '../../lib/functions'
+import { startTriage } from './utils'
 
 const BATCH_SIZE = 5
 // One email a second stays well inside Gmail's per-user, per-minute quota while the user keeps working.
@@ -56,7 +56,7 @@ export const startBatch = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
   handler: async (ctx, { ids }) => {
-    for (const messageId of ids) await start(ctx, internal.models.messages.triage.triageMessage, { messageId })
+    for (const messageId of ids) await startTriage(ctx, messageId)
     return { debounceMs: BATCH_GAP_MS }
   },
 })

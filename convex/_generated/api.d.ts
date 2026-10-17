@@ -19,6 +19,7 @@ import type * as http from "../http.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_gmail from "../lib/gmail.js";
+import type * as lib_log from "../lib/log.js";
 import type * as lib_mail from "../lib/mail.js";
 import type * as lib_markdown from "../lib/markdown.js";
 import type * as lib_pipeline from "../lib/pipeline.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   "lib/crypto": typeof lib_crypto;
   "lib/functions": typeof lib_functions;
   "lib/gmail": typeof lib_gmail;
+  "lib/log": typeof lib_log;
   "lib/mail": typeof lib_mail;
   "lib/markdown": typeof lib_markdown;
   "lib/pipeline": typeof lib_pipeline;

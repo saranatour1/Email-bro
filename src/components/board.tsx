@@ -321,7 +321,7 @@ const Card = ({
         e.dataTransfer.effectAllowed = 'move'
       }}
       className={cn(
-        'relative flex flex-col gap-1 overflow-hidden rounded-md border bg-card p-2.5 text-[13px] shadow-xs hover:border-ring/40',
+        'relative flex shrink-0 flex-col gap-1 overflow-hidden rounded-md border bg-card p-2.5 text-[13px] shadow-xs hover:border-ring/40',
         selected && 'border-ring/60',
         justSorted && 'animate-in duration-500 fade-in slide-in-from-left-6 border-ring/50',
       )}

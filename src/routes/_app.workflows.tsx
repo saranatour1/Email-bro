@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useMutation, usePaginatedQuery } from 'convex/react'
+import { useAction, useMutation, usePaginatedQuery } from 'convex/react'
 import { ConvexError } from 'convex/values'
-import { Trash2, Workflow } from 'lucide-react'
+import { Plus, Sparkles, Trash2, Workflow } from 'lucide-react'
+import type { FunctionReturnType } from 'convex/server'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import type { Status } from '~/lib/status'
 import { api } from '~/lib/api'
@@ -114,10 +115,86 @@ const Workflows = () => {
             </div>
           )}
 
+          <Suggestions />
           <NewWorkflow mailboxes={mailboxes} />
         </div>
       </ScrollArea>
     </>
+  )
+}
+
+type Suggestion = FunctionReturnType<typeof api.workflows.suggest>[number]
+
+const Suggestions = () => {
+  const suggest = useAction(api.workflows.suggest)
+  const create = useMutation(api.workflows.create)
+  const [suggestions, setSuggestions] = useState<Array<Suggestion> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      setSuggestions(await suggest({}))
+    } catch {
+      setError('Could not get suggestions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const add = async (s: Suggestion) => {
+    try {
+      await create({ name: s.name, condition: s.condition, action: s.action })
+      setSuggestions((all) => all?.filter((x) => x !== s) ?? null)
+    } catch (err) {
+      setError(err instanceof ConvexError ? String(err.data) : 'Could not save the workflow')
+    }
+  }
+
+  return (
+    <Card className="gap-4">
+      <CardHeader className="flex flex-row items-start justify-between gap-3">
+        <div className="flex flex-col gap-1.5">
+          <CardTitle className="text-sm">Suggested for you</CardTitle>
+          <CardDescription>Ideas from who writes to you and what you do with their mail.</CardDescription>
+        </div>
+        <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}>
+          <Sparkles />
+          {loading ? 'Thinking…' : suggestions ? 'Refresh' : 'Suggest'}
+        </Button>
+      </CardHeader>
+      {(suggestions || error) && (
+        <CardContent className="flex flex-col gap-2">
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {suggestions?.length === 0 && <p className="text-sm text-muted-foreground">Nothing to suggest yet.</p>}
+          {suggestions?.map((s) => (
+            <div key={s.name + s.condition} className="flex items-start gap-3 rounded-md border p-3">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">{s.name}</span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <StatusIcon status={actionMeta(s.action).status} />
+                    {actionMeta(s.action).label}
+                  </span>
+                </div>
+                <p className="text-sm">{s.condition}</p>
+                <p className="text-xs text-muted-foreground">{s.why}</p>
+              </div>
+              <Button size="sm" variant="ghost" aria-label={`Add ${s.name}`} onClick={() => void add(s)}>
+                <Plus />
+                Add
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      )}
+    </Card>
   )
 }
 

@@ -29,6 +29,7 @@ import type * as models_backfillRuns_run from "../models/backfillRuns/run.js";
 import type * as models_filters_manage from "../models/filters/manage.js";
 import type * as models_goals_manage from "../models/goals/manage.js";
 import type * as models_jevWorkflows_manage from "../models/jevWorkflows/manage.js";
+import type * as models_jevWorkflows_suggest from "../models/jevWorkflows/suggest.js";
 import type * as models_mailboxes_domain from "../models/mailboxes/domain.js";
 import type * as models_mailboxes_gmail_backfill from "../models/mailboxes/gmail/backfill.js";
 import type * as models_mailboxes_gmail_connect from "../models/mailboxes/gmail/connect.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   "models/filters/manage": typeof models_filters_manage;
   "models/goals/manage": typeof models_goals_manage;
   "models/jevWorkflows/manage": typeof models_jevWorkflows_manage;
+  "models/jevWorkflows/suggest": typeof models_jevWorkflows_suggest;
   "models/mailboxes/domain": typeof models_mailboxes_domain;
   "models/mailboxes/gmail/backfill": typeof models_mailboxes_gmail_backfill;
   "models/mailboxes/gmail/connect": typeof models_mailboxes_gmail_connect;

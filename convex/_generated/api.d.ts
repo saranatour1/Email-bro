@@ -32,6 +32,7 @@ import type * as models_mailboxes_gmail_connect from "../models/mailboxes/gmail/
 import type * as models_mailboxes_gmail_sync from "../models/mailboxes/gmail/sync.js";
 import type * as models_mailboxes_gmail_writeBack from "../models/mailboxes/gmail/writeBack.js";
 import type * as models_mailboxes_list from "../models/mailboxes/list.js";
+import type * as models_mailboxes_options from "../models/mailboxes/options.js";
 import type * as models_mailboxes_utils from "../models/mailboxes/utils.js";
 import type * as models_messages_ingest from "../models/messages/ingest.js";
 import type * as models_messages_list from "../models/messages/list.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "models/mailboxes/gmail/sync": typeof models_mailboxes_gmail_sync;
   "models/mailboxes/gmail/writeBack": typeof models_mailboxes_gmail_writeBack;
   "models/mailboxes/list": typeof models_mailboxes_list;
+  "models/mailboxes/options": typeof models_mailboxes_options;
   "models/mailboxes/utils": typeof models_mailboxes_utils;
   "models/messages/ingest": typeof models_messages_ingest;
   "models/messages/list": typeof models_messages_list;

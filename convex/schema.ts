@@ -30,6 +30,9 @@ export default defineSchema({
     historyId: v.optional(v.string()),
     gmailLabelIds: v.optional(v.record(v.string(), v.string())),
     lastSyncedAt: v.optional(v.number()),
+    // Gmail write-back after Jev sorts: add Bro/* labels, archive filed mail. Unset means on.
+    autoLabel: v.optional(v.boolean()),
+    autoArchive: v.optional(v.boolean()),
   })
     .index('by_userId', ['userId'])
     .index('by_address', ['address']),

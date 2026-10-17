@@ -18,15 +18,16 @@ export const applyTriage = internalAction({
     if (!message?.category) return null
     const mailbox = await ctx.runQuery(internal.models.mailboxes.list.get, { mailboxId: message.mailboxId })
     if (mailbox?.provider !== 'gmail') return null
-    const token = await accessToken(ctx, mailbox._id)
-    const labelId = await ensureLabel(ctx, token, mailbox, message.category)
+    const label = mailbox.autoLabel !== false
     // Also archives what a workflow moved to Done, Cancelled or Spam.
     const keep =
       message.status === 'in_progress' ||
       (message.status === 'inbox' && (message.focus === true || !ARCHIVE_IF_NOT_FOCUS.has(message.category)))
-    const archive = !keep
+    const archive = mailbox.autoArchive !== false && !keep
+    if (!label && !archive) return null
+    const token = await accessToken(ctx, mailbox._id)
     await gmailFetch(token, `/messages/${message.externalId}/modify`, {
-      addLabelIds: [labelId],
+      addLabelIds: label ? [await ensureLabel(ctx, token, mailbox, message.category)] : [],
       removeLabelIds: archive ? ['INBOX'] : [],
     })
     return null

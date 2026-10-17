@@ -12,6 +12,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { ScrollArea } from '~/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
+import { Switch } from '~/components/ui/switch'
 
 const ERRORS: Partial<Record<string, string>> = {
   gmail_api_disabled:
@@ -24,6 +25,7 @@ const Settings = () => {
   const { connected, error } = Route.useSearch()
   const { results: mailboxes, status } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
   const startConnect = useAction(api.mailboxes.startGmailConnect)
+  const setGmailOptions = useMutation(api.mailboxes.setGmailOptions)
   const connect = async () => {
     window.location.href = await startConnect()
   }
@@ -77,6 +79,8 @@ const Settings = () => {
                     <th>provider</th>
                     <th>status</th>
                     <th>last synced</th>
+                    <th title="Add Jev's Bro/* labels in Gmail">label in gmail</th>
+                    <th title="Move filed mail out of Gmail's inbox">archive in gmail</th>
                   </tr>
                 </thead>
                 <tbody className="font-mono text-xs">
@@ -110,6 +114,28 @@ const Settings = () => {
                       <td className="text-muted-foreground">
                         {m.lastSyncedAt ? new Date(m.lastSyncedAt).toLocaleString() : '—'}
                       </td>
+                      {m.provider === 'gmail' ? (
+                        <>
+                          <td>
+                            <Switch
+                              checked={m.autoLabel !== false}
+                              onCheckedChange={(on) => void setGmailOptions({ mailboxId: m._id, autoLabel: on })}
+                              aria-label={`Label ${m.address} in Gmail`}
+                            />
+                          </td>
+                          <td>
+                            <Switch
+                              checked={m.autoArchive !== false}
+                              onCheckedChange={(on) => void setGmailOptions({ mailboxId: m._id, autoArchive: on })}
+                              aria-label={`Archive filed mail in ${m.address}`}
+                            />
+                          </td>
+                        </>
+                      ) : (
+                        <td colSpan={2} className="text-muted-foreground">
+                          labels stay in the app
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -122,8 +148,8 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="text-sm">Gmail</CardTitle>
                 <CardDescription>
-                  Sorted by Jev and mirrored back as Bro/* labels. Only Focus and In progress stay in the Gmail inbox;
-                  the rest is archived there, never deleted.
+                  Sorted by Jev and mirrored back as Bro/* labels; filed mail is archived in Gmail, never deleted. Turn
+                  either off per mailbox in the table above.
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto">

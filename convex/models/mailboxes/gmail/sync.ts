@@ -10,6 +10,7 @@ import type { GmailHistoryPage } from '../../../lib/gmailSync'
 
 const BACKFILL = { query: 'in:inbox newer_than:30d', limit: 2000 }
 const MAX_PER_SYNC = 100
+const MAX_HISTORY_PAGES = 20
 const NEXT_PAGE_MS = 1000
 
 const syncNow = userMutation({
@@ -79,17 +80,26 @@ export const sync = internalAction({
 
 // Null when Gmail no longer has history that far back (404).
 const historySince = async (token: string, startHistoryId: string) => {
-  const params = new URLSearchParams({
-    startHistoryId,
-    historyTypes: 'messageAdded',
-    labelId: 'INBOX',
-    maxResults: String(MAX_PER_SYNC),
-  })
-  const res = await fetch(`${API}/history?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error(`Gmail history ${res.status}: ${await res.text()}`)
-  const body = (await res.json()) as GmailHistoryPage
-  return historyCursor(startHistoryId, [body])
+  const pages: Array<GmailHistoryPage> = []
+  let pageToken: string | undefined
+  for (let page = 0; page < MAX_HISTORY_PAGES; page++) {
+    const params = new URLSearchParams({
+      startHistoryId,
+      historyTypes: 'messageAdded',
+      labelId: 'INBOX',
+      maxResults: String(MAX_PER_SYNC),
+    })
+    if (pageToken) params.set('pageToken', pageToken)
+    const res = await fetch(`${API}/history?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    if (res.status === 404) return null
+    if (!res.ok) throw new Error(`Gmail history ${res.status}: ${await res.text()}`)
+    const body = (await res.json()) as GmailHistoryPage
+    pages.push(body)
+    const folded = historyCursor(startHistoryId, pages)
+    if (!body.nextPageToken || folded.historyId) return folded
+    pageToken = body.nextPageToken
+  }
+  return historyCursor(startHistoryId, pages)
 }
 
 export const patch = internalMutation({

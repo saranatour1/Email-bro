@@ -32,6 +32,14 @@ const stuck = historyCursor('h1', [{ historyId: 'TIP', nextPageToken: 'next', hi
 assert(stuck.historyId === undefined, 'a page with no new record does not move the cursor')
 assert(stuck.hasMore === false, 'a page with no new record does not chain')
 
+const afterEmpty = historyCursor('start', [
+  { historyId: 'TIP', nextPageToken: 'p2', history: [] },
+  { historyId: 'TIP', nextPageToken: 'p3', history: [{ id: 'h4', messagesAdded: [{ message: { id: 'm4' } }] }] },
+])
+assert(afterEmpty.historyId === 'h4', `empty page then a record stores h4, got ${afterEmpty.historyId}`)
+assert(afterEmpty.hasMore === true, 'a later page token still chains')
+assert(afterEmpty.ids.join() === 'm4', `ids after an empty page ${afterEmpty.ids.join()}`)
+
 const now = Date.UTC(2026, 9, 17, 12, 0, 0)
 assert(shouldSyncMailbox({ provider: 'gmail', lastSyncedAt: now - 120_000 }, now) === true, 'a stale mailbox syncs')
 assert(shouldSyncMailbox({ provider: 'gmail' }, now) === true, 'a never-synced mailbox syncs')

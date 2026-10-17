@@ -75,8 +75,8 @@ importers:
         specifier: ^0.1.128
         version: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
       evlog:
-        specifier: ^2.33.0
-        version: 2.33.0(@tanstack/start-client-core@1.170.37)(ai@7.0.143(zod@4.6.7))(express@5.3.0)(hono@4.13.13)(react@19.3.1)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.27.0)(jiti@2.7.0))
+        specifier: 2.32.0
+        version: 2.32.0(@tanstack/start-client-core@1.170.37)(ai@7.0.143(zod@4.6.7))(express@5.3.0)(hono@4.13.13)(react@19.3.1)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.27.0)(jiti@2.7.0))
       lucide-react:
         specifier: ^1.58.0
         version: 1.58.0(@types/react@19.3.0)(react@19.3.1)
@@ -2963,8 +2963,8 @@ packages:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
 
-  evlog@2.33.0:
-    resolution: {integrity: sha512-QXu0QCrkY3jw+Wr8s6Pj0W0HLtXXDCnSjNMeYxi4WX6IXuyJqeT9iKp9zn6lJBUGm4a+pFjNccL7eAQq/UrM3A==}
+  evlog@2.32.0:
+    resolution: {integrity: sha512-jfQZ/GCRgoPDlvPz5kGnRy4CePFWi3qmy1w1BEboBZBj6S34ZGeBWPbUwk9HFFncFoVtnVTnqXutCtxhOK2QrQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
     peerDependencies:
@@ -2974,7 +2974,6 @@ packages:
       '@orpc/server': '>=1.15.4'
       '@tanstack/start-client-core': ^1.170.34
       ai: '>=6.0.168 <8.0.0'
-      effect: ^4.0.0
       elysia: '>=1.4.30'
       eve: '>=0.30.0'
       express: '>=5.2.1'
@@ -3000,8 +2999,6 @@ packages:
       '@tanstack/start-client-core':
         optional: true
       ai:
-        optional: true
-      effect:
         optional: true
       elysia:
         optional: true
@@ -7408,7 +7405,7 @@ snapshots:
     dependencies:
       eventsource-parser: 3.1.1
 
-  evlog@2.33.0(@tanstack/start-client-core@1.170.37)(ai@7.0.143(zod@4.6.7))(express@5.3.0)(hono@4.13.13)(react@19.3.1)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.27.0)(jiti@2.7.0)):
+  evlog@2.32.0(@tanstack/start-client-core@1.170.37)(ai@7.0.143(zod@4.6.7))(express@5.3.0)(hono@4.13.13)(react@19.3.1)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.27.0)(jiti@2.7.0)):
     optionalDependencies:
       '@tanstack/start-client-core': 1.170.37
       ai: 7.0.143(zod@4.6.7)

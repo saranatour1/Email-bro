@@ -34,7 +34,7 @@
     "cn": "^0.5.0",
     "convex": "^1.47.0",
     "convex-helpers": "^0.1.128",
-    "evlog": "^2.33.0",
+    "evlog": "2.32.0",
     "lucide-react": "^1.58.0",
     "node-html-markdown": "^2.0.0",
     "postal-mime": "^4.0.7",

@@ -10,7 +10,7 @@ import { errorKind, wideEvent } from '../../lib/log'
 import { counterKey, counters, emailRef, track } from '../../lib/pipeline'
 import { triagePatch } from '../../lib/triagePatch'
 import { vCategory, vFilterStatus, vRoute, vWorkflowAction } from '../../schema'
-import { loadMail } from './utils'
+import { loadMail, startTriage } from './utils'
 import type { ActionCtx } from '../../_generated/server'
 import type { Infer } from 'convex/values'
 import type { Doc, Id } from '../../_generated/dataModel'
@@ -98,8 +98,7 @@ export const classify = internalAction({
   handler: async (ctx, { messageId }): Promise<Judgment | null> => {
     const message = await ctx.runQuery(internal.models.messages.list.getInternal, { messageId })
     if (!message) return null
-    // Only first sorts wait for Resume; re-sorts and retries of sorted mail aren't part of the backfill.
-    const runId = message.route ? undefined : message.backfillRunId
+    const runId = firstSort(message) ? message.backfillRunId : undefined
     if (runId && (await ctx.runQuery(internal.models.mailboxes.gmail.backfill.isPaused, { runId }))) {
       await ctx.runMutation(internal.models.messages.triage.parkTriage, { messageId, runId })
       return null
@@ -251,9 +250,7 @@ export const saveTriage = internalMutation({
   handler: async (ctx, { messageId, action, focus, markRead, jev, ...fields }) => {
     const message = await ctx.db.get('messages', messageId)
     if (!message) return null
-    // Only an email's first decision counts toward its backfill run; re-sorts and retries don't.
-    // A failed email was already counted when it fell back to Needs action.
-    if (message.backfillRunId && !message.jev && !message.triageFailed) {
+    if (message.backfillRunId && firstSort(message)) {
       await track(ctx, message.backfillRunId, 'sorted', {
         ref: await emailRef(message.externalId),
         route: fields.route,
@@ -268,19 +265,29 @@ export const saveTriage = internalMutation({
   },
 })
 
-// Runs when a triage workflow ends. If every retry failed, the email leaves Reading for Needs action.
+// An email's first sort counts toward its backfill run and waits for Resume. Re-sorts don't, and neither does
+// retrying a failure: that email was counted when it fell back to Needs action.
+const firstSort = (m: Doc<'messages'>) => !m.jev && !m.triageFailed
+
 export const parkTriage = internalMutation({
   args: { messageId: v.id('messages'), runId: v.id('backfillRuns') },
   returns: v.null(),
   handler: async (ctx, { messageId, runId }) => {
+    const message = await ctx.db.get('messages', messageId)
     // A retried step may park the same email twice; count it once.
-    if ((await ctx.db.get('messages', messageId))?.triageParked) return null
+    if (!message || message.triageParked) return null
+    // Resume may have landed since classify checked, and it won't come back for this email: sort it now.
+    if (!(await ctx.db.get('backfillRuns', runId))?.paused) {
+      await startTriage(ctx, messageId)
+      return null
+    }
     await ctx.db.patch('messages', messageId, { triageParked: true })
     await counters.add(ctx, counterKey(runId, 'parked'), 1)
     return null
   },
 })
 
+// Runs when a triage workflow ends. If every retry failed, the email leaves Reading for Needs action.
 export const onTriageDone = internalMutation({
   args: { workflowId: vWorkflowId, result: vResultValidator, context: v.object({ messageId: v.id('messages') }) },
   returns: v.null(),

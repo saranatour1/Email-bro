@@ -31,9 +31,9 @@ const startRun = userMutation({
     if (mailboxes.length === 0) throw new ConvexError('Connect a Gmail account first')
     // Starting clears the previous run, so never start over one that is still moving or waiting for Resume.
     const latest = await latestRun(ctx, ctx.userId)
-    if (latest?.paused) throw new ConvexError('Resume the paused backfill or let it finish first.')
+    if (latest?.paused) throw new ConvexError('Resume the paused backfill first.')
     const worker = latest && (await ctx.runQuery(components.batchWorker.lib.status, { name: workerName(latest._id) }))
-    if (worker && worker.kind === 'running')
+    if (worker?.kind === 'running')
       throw new ConvexError('A backfill is still running. Pause it or wait for it to finish.')
 
     // Convex allows one .paginate() per function, so this second, fixed read uses .take().
@@ -150,7 +150,8 @@ const resumeRun = userMutation({
       paused: false,
       pending: (run.pending ?? []).filter((p) => p.reason !== 'paused'),
     })
-    // Start wakes a stopped worker; ping creates one for queue rows from before workers were per run.
+    // Pause leaves the worker stopped, which ping won't wake. If the run paused before its first email was
+    // queued, the worker doesn't exist yet and only ping creates it.
     await ctx.runMutation(components.batchWorker.lib.start, { name: workerName(runId) })
     await pingWorker(ctx, runId)
     await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
@@ -279,10 +280,7 @@ export const resumeTriage = internalMutation({
       await ctx.db.patch('messages', m._id, { triageParked: undefined })
       await startTriage(ctx, m._id)
     }
-    // Emails parked before the counter existed were never counted, so never go below zero.
-    const key = counterKey(runId, 'parked')
-    const counted = Math.min(parked.length, await counters.count(ctx, key))
-    if (counted > 0) await counters.subtract(ctx, key, counted)
+    if (parked.length) await counters.subtract(ctx, counterKey(runId, 'parked'), parked.length)
     if (parked.length === 100) await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
     return null
   },

@@ -4,6 +4,7 @@ import { useAction, useMutation } from 'convex/react'
 import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
 import { ArrowRight, DatabaseZap, Inbox, Layers, Pause, Play, RotateCcw, ScanText, Sparkles } from 'lucide-react'
+import { readingCount } from '../../convex/lib/runBusy'
 import type { ReactNode } from 'react'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import { api } from '~/lib/api'
@@ -156,8 +157,6 @@ const RunControls = ({
     </PageHeader>
   )
 }
-
-const readingCount = (counts: Counts) => Math.max(0, counts.fetched - counts.sorted - counts.parked)
 
 // The pipeline as a row of steps, each with its live count.
 const Flow = ({ counts, running }: { counts: Counts; running: boolean }) => {

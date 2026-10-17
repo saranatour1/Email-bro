@@ -10,6 +10,9 @@ export const vStatus = literals('inbox', 'in_progress', 'snoozed', 'done', 'canc
 // Jev's decision for each email: its column on the "By Jev" board.
 export const vRoute = literals('action', 'goal', 'info', 'spam')
 
+// Where a matching filter moves an email (statuses a rule may set).
+export const vFilterStatus = literals('in_progress', 'done', 'cancelled')
+
 // Where a matching Jev workflow moves an email. `focus` = Inbox, shown in Focus.
 export const vWorkflowAction = literals('focus', 'in_progress', 'done', 'cancelled', 'spam')
 
@@ -82,6 +85,7 @@ export default defineSchema({
         urgency: v.number(),
         categoryConfidence: v.number(),
         workflowId: v.optional(v.id('jevWorkflows')),
+        filterId: v.optional(v.id('filters')),
         sortedAt: v.number(),
       }),
     ),
@@ -138,4 +142,18 @@ export default defineSchema({
     label: v.optional(vCategory),
     at: v.number(),
   }).index('by_runId_and_at', ['runId', 'at']),
+
+  // Gmail-style rules: exact matches on sender and subject, checked before Jev. `|` separates alternatives.
+  filters: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    enabled: v.boolean(),
+    mailboxId: v.optional(v.id('mailboxes')),
+    from: v.optional(v.string()),
+    subject: v.optional(v.string()),
+    route: v.optional(vRoute),
+    label: v.optional(vCategory),
+    status: v.optional(vFilterStatus),
+    markRead: v.optional(v.boolean()),
+  }).index('by_userId', ['userId']),
 })

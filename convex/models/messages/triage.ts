@@ -4,10 +4,11 @@ import { experimental_decide as decide } from 'ai'
 import { convexGateway } from '@convex-dev/ai-sdk-provider'
 import { components, internal } from '../../_generated/api'
 import { internalAction, internalMutation } from '../../_generated/server'
+import { matchFilter } from '../../lib/filters'
 import { toCleanMarkdown } from '../../lib/markdown'
 import { errorKind, wideEvent } from '../../lib/log'
 import { emailRef, track } from '../../lib/pipeline'
-import { vCategory, vRoute, vWorkflowAction } from '../../schema'
+import { vCategory, vFilterStatus, vRoute, vWorkflowAction } from '../../schema'
 import { loadMail } from './utils'
 import type { ActionCtx } from '../../_generated/server'
 import type { Infer } from 'convex/values'
@@ -51,6 +52,12 @@ const vJudgment = v.object({
   category: vCategory,
   categoryConfidence: v.number(),
   matched: v.union(v.null(), v.object({ workflowId: v.id('jevWorkflows'), action: vWorkflowAction })),
+  filter: v.union(
+    v.null(),
+    v.object({ filterId: v.id('filters'), status: v.optional(vFilterStatus), markRead: v.optional(v.boolean()) }),
+  ),
+  // `filter` when a filter decided route and label on its own and Jev wasn't asked.
+  model: v.string(),
 })
 type Judgment = Infer<typeof vJudgment>
 
@@ -65,17 +72,20 @@ export const triageMessage = defineWorkflow(components.workflow, {
 }).handler(async (step, { messageId }): Promise<void> => {
   const judgment = await step.runAction(internal.models.messages.triage.classify, { messageId })
   if (!judgment) return
-  const { route, goalId, category, matched, ...signals } = judgment
+  const { route, goalId, category, matched, filter, ...signals } = judgment
   // Policy lives here, on top of raw probabilities, so it can change without asking Jev again.
-  const focus = matched ? matched.action === 'focus' : route === 'action' || route === 'goal'
+  // A filter's status beats a Jev workflow's action; both beat the route's default.
+  const action = filter?.status ?? matched?.action
+  const focus = action ? action === 'focus' : route === 'action' || route === 'goal'
   await step.runMutation(internal.models.messages.triage.saveTriage, {
     messageId,
     route,
     goalId,
     category,
     focus,
-    action: matched?.action,
-    jev: { model: JEV, ...signals, workflowId: matched?.workflowId },
+    action,
+    markRead: filter?.markRead,
+    jev: { ...signals, workflowId: matched?.workflowId, filterId: filter?.filterId },
   })
   await step.runAction(internal.models.mailboxes.gmail.writeBack.applyTriage, { messageId })
 })
@@ -97,6 +107,8 @@ export const classify = internalAction({
         category: judgment.category,
         goalMatched: !!judgment.goalId,
         workflowMatched: !!judgment.matched,
+        filterMatched: !!judgment.filter,
+        jevSkipped: judgment.model === 'filter',
       })
       log.emit()
       return judgment
@@ -110,7 +122,7 @@ export const classify = internalAction({
 })
 
 const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment> => {
-  const [mailbox, mail, goals, workflows] = await Promise.all([
+  const [mailbox, mail, goals, workflows, filters] = await Promise.all([
     ctx.runQuery(internal.models.mailboxes.list.get, { mailboxId: message.mailboxId }),
     loadMail(ctx, message),
     ctx.runQuery(internal.models.goals.manage.forTriage, { userId: message.userId }),
@@ -118,7 +130,23 @@ const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment
       userId: message.userId,
       mailboxId: message.mailboxId,
     }),
+    ctx.runQuery(internal.models.filters.manage.forTriage, { userId: message.userId, mailboxId: message.mailboxId }),
   ])
+  const hit = matchFilter(filters, mail)
+  const filter = hit ? { filterId: hit._id, status: hit.status, markRead: hit.markRead } : null
+  // A filter that sets both the column and the label decides on its own: no Jev call.
+  if (hit?.route && hit.label) {
+    return {
+      route: hit.route,
+      routeProbabilities: { [hit.route]: 1 },
+      urgency: 0,
+      category: hit.label,
+      categoryConfidence: 1,
+      matched: null,
+      filter,
+      model: 'filter',
+    }
+  }
   const routes = goals.length ? ROUTES : { action: ROUTES.action, info: ROUTES.info, spam: ROUTES.spam }
   // Asked in the same call, keyed by workflow id.
   const custom = Object.fromEntries(
@@ -170,15 +198,19 @@ const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment
   }
   const goalAnswer = answers.goal
   const goalChoice: string | undefined = goalAnswer?.type === 'choice' ? goalAnswer.choice : undefined
+  // A filter that sets only one of route or label overrides just that part of Jev's answer.
+  const finalRoute = hit?.route ?? route
   return {
-    route,
-    routeProbabilities: answers.route.probabilities ?? { [route]: 1 },
-    goalId: route === 'goal' ? goals.find((g) => g._id === goalChoice)?._id : undefined,
+    route: finalRoute,
+    routeProbabilities: hit?.route ? { [finalRoute]: 1 } : (answers.route.probabilities ?? { [route]: 1 }),
+    goalId: finalRoute === 'goal' ? goals.find((g) => g._id === goalChoice)?._id : undefined,
     urgency: answers.urgency.score,
-    category,
+    category: hit?.label ?? category,
     // The SDK returns the distribution, not a confidence score: keep the winner's share.
-    categoryConfidence: answers.category.probabilities?.[category] ?? 0,
+    categoryConfidence: hit?.label ? 1 : (answers.category.probabilities?.[category] ?? 0),
     matched: matchWorkflow(workflows, answers),
+    filter,
+    model: JEV,
   }
 }
 
@@ -198,19 +230,26 @@ export const saveTriage = internalMutation({
     category: vCategory,
     focus: v.boolean(),
     action: v.optional(vWorkflowAction),
+    markRead: v.optional(v.boolean()),
     jev: v.object({
       model: v.string(),
       routeProbabilities: v.record(v.string(), v.number()),
       urgency: v.number(),
       categoryConfidence: v.number(),
       workflowId: v.optional(v.id('jevWorkflows')),
+      filterId: v.optional(v.id('filters')),
     }),
   },
   returns: v.null(),
-  handler: async (ctx, { messageId, action, focus, jev, ...fields }) => {
+  handler: async (ctx, { messageId, action, focus, markRead, jev, ...fields }) => {
     const message = await ctx.db.get('messages', messageId)
     if (!message) return null
-    const decided = { ...fields, jev: { ...jev, sortedAt: Date.now() }, triage: undefined }
+    const decided = {
+      ...fields,
+      jev: { ...jev, sortedAt: Date.now() },
+      triage: undefined,
+      ...(markRead ? { read: true } : {}),
+    }
     if (message.backfillRunId) {
       await track(ctx, message.backfillRunId, 'sorted', {
         ref: await emailRef(message.externalId),

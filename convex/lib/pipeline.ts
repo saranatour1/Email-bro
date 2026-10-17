@@ -6,8 +6,9 @@ import type { MutationCtx } from '../_generated/server'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { vCategory, vRoute } from '../schema'
 
-// One shard per key keeps the live status query to one read per counter; raise it if writes start to conflict.
-export const counters = new ShardedCounter(components.shardedCounter, { defaultShards: 1 })
+// Up to 25 triage steps bump the same totals at once; 8 shards keep those writes from conflicting.
+// Only ever raise this: counts already stored in higher shards would be dropped by a lower number.
+export const counters = new ShardedCounter(components.shardedCounter, { defaultShards: 8 })
 
 export const COUNTS = ['queued', 'claimed', 'skipped', 'fetched', 'sorted', 'retry', 'failed'] as const
 export type Count = (typeof COUNTS)[number]

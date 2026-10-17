@@ -31,7 +31,12 @@ const Backfill = () => {
 
   return (
     <>
-      <RunControls running={status?.worker?.kind === 'running'} run={status?.run} failed={status?.counts.failed ?? 0} />
+      <RunControls
+        running={status?.worker?.kind === 'running'}
+        sorting={!!status && status.counts.sorted < status.counts.fetched}
+        run={status?.run}
+        failed={status?.counts.failed ?? 0}
+      />
       <div className="flex min-h-0 flex-1">
         <ScrollArea className="min-h-0 flex-1">
           {status ? (
@@ -53,7 +58,17 @@ const Backfill = () => {
   )
 }
 
-const RunControls = ({ running, run, failed }: { running: boolean; run?: Doc<'backfillRuns'>; failed: number }) => {
+const RunControls = ({
+  running,
+  sorting,
+  run,
+  failed,
+}: {
+  running: boolean
+  sorting: boolean
+  run?: Doc<'backfillRuns'>
+  failed: number
+}) => {
   const { results: mailboxes } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
   const startRun = useMutation(api.backfill.startRun)
   const pauseRun = useMutation(api.backfill.pauseRun)
@@ -104,7 +119,7 @@ const RunControls = ({ running, run, failed }: { running: boolean; run?: Doc<'ba
             ))}
           </SelectContent>
         </Select>
-        {run && !run.paused && running && (
+        {run && !run.paused && (running || sorting) && (
           <Button size="sm" variant="outline" onClick={() => void pauseRun({ runId: run._id })}>
             <Pause /> Pause
           </Button>

@@ -252,7 +252,8 @@ export const saveTriage = internalMutation({
     const message = await ctx.db.get('messages', messageId)
     if (!message) return null
     // Only an email's first decision counts toward its backfill run; re-sorts and retries don't.
-    if (message.backfillRunId && !message.jev) {
+    // A failed email was already counted when it fell back to Needs action.
+    if (message.backfillRunId && !message.jev && !message.triageFailed) {
       await track(ctx, message.backfillRunId, 'sorted', {
         ref: await emailRef(message.externalId),
         route: fields.route,

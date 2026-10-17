@@ -3,9 +3,11 @@ import { defineBatchWorkerValidators, ping } from '@convex-dev/batch-worker'
 import { components, internal } from '../../../_generated/api'
 import { internalAction, internalMutation, internalQuery } from '../../../_generated/server'
 import { accessToken, gmailFetch } from '../../../lib/gmail'
+import { track } from '../../../lib/pipeline'
 import { ingestGmailMessage } from '../utils'
 import type { Infer } from 'convex/values'
 import type { MutationCtx } from '../../../_generated/server'
+import type { Id } from '../../../_generated/dataModel'
 
 const BATCH_SIZE = 10
 const PAGE_SIZE = 500
@@ -13,39 +15,67 @@ const MAX_ATTEMPTS = 3
 // One batch per second keeps us far below Gmail's per-user quota.
 const BATCH_GAP_MS = 1000
 
-const vEntry = v.object({ mailboxId: v.id('mailboxes'), gmailId: v.string(), attempts: v.number() })
+const vEntry = v.object({
+  mailboxId: v.id('mailboxes'),
+  gmailId: v.string(),
+  attempts: v.number(),
+  runId: v.optional(v.id('backfillRuns')),
+})
 type Entry = Infer<typeof vEntry>
 
 const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBatchWorkerValidators({
   batch: { items: v.array(v.object({ id: v.id('backfillQueue'), ...vEntry.fields })) },
 })
 
+export const WORKER = 'gmail-backfill'
+
 const pingWorker = (ctx: MutationCtx) =>
   ping(ctx, components.batchWorker, {
-    name: 'gmail-backfill',
+    name: WORKER,
     workQuery: internal.models.mailboxes.gmail.backfill.getBatch,
     workerMutation: internal.models.mailboxes.gmail.backfill.claimBatch,
   })
 
+// Items of one batch can belong to different runs (or none); count each run separately.
+const byRun = (items: Array<{ runId?: Id<'backfillRuns'> }>) => {
+  const runs = new Map<Id<'backfillRuns'>, number>()
+  for (const { runId } of items) if (runId) runs.set(runId, (runs.get(runId) ?? 0) + 1)
+  return runs
+}
+
+// Pages through Gmail's ids and queues them. Without a limit it runs until the range is exhausted,
+// continuing in a fresh action every few pages so a big mailbox never hits the action time limit.
+const PAGES_PER_ACTION = 20
+
 export const start = internalAction({
-  args: { mailboxId: v.id('mailboxes'), query: v.string(), limit: v.number() },
+  args: {
+    mailboxId: v.id('mailboxes'),
+    query: v.string(),
+    limit: v.optional(v.number()),
+    runId: v.optional(v.id('backfillRuns')),
+    pageToken: v.optional(v.string()),
+  },
   returns: v.null(),
-  handler: async (ctx, { mailboxId, query, limit }): Promise<null> => {
+  handler: async (ctx, args): Promise<null> => {
+    const { mailboxId, query, runId } = args
     const token = await accessToken(ctx, mailboxId)
-    let queued = 0
-    let pageToken: string | undefined
-    do {
-      const params = new URLSearchParams({ q: query, maxResults: String(Math.min(PAGE_SIZE, limit - queued)) })
+    let limit = args.limit
+    let pageToken = args.pageToken
+    for (let pages = 0; pages < PAGES_PER_ACTION; pages++) {
+      const size = Math.min(PAGE_SIZE, limit ?? PAGE_SIZE)
+      const params = new URLSearchParams({ q: query, maxResults: String(size) })
       if (pageToken) params.set('pageToken', pageToken)
       const page = (await gmailFetch(token, `/messages?${params}`)) as {
         messages?: Array<{ id: string }>
         nextPageToken?: string
       }
-      const items = (page.messages ?? []).map((m) => ({ mailboxId, gmailId: m.id, attempts: 0 }))
+      const items = (page.messages ?? []).map((m) => ({ mailboxId, gmailId: m.id, attempts: 0, runId }))
       if (items.length) await ctx.runMutation(internal.models.mailboxes.gmail.backfill.enqueue, { items })
-      queued += items.length
+      if (limit !== undefined) limit -= items.length
       pageToken = page.nextPageToken
-    } while (pageToken && queued < limit)
+      if (!pageToken || (limit !== undefined && limit <= 0)) return null
+    }
+    await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, { ...args, limit, pageToken })
     return null
   },
 })
@@ -55,6 +85,8 @@ export const enqueue = internalMutation({
   returns: v.null(),
   handler: async (ctx, { items }) => {
     for (const item of items) await ctx.db.insert('backfillQueue', { ...item, queuedAt: ctx.db.vars.commitTs })
+    const retrying = items.some((i) => i.attempts > 0)
+    for (const [runId, count] of byRun(items)) await track(ctx, runId, retrying ? 'retry' : 'queued', { count })
     await pingWorker(ctx)
     return null
   },
@@ -72,7 +104,13 @@ export const getBatch = internalQuery({
     return {
       kind: 'work' as const,
       batch: {
-        items: rows.map((r) => ({ id: r._id, mailboxId: r.mailboxId, gmailId: r.gmailId, attempts: r.attempts })),
+        items: rows.map((r) => ({
+          id: r._id,
+          mailboxId: r.mailboxId,
+          gmailId: r.gmailId,
+          attempts: r.attempts,
+          runId: r.runId,
+        })),
       },
       cursor: rows[rows.length - 1].queuedAt,
     }
@@ -85,6 +123,7 @@ export const claimBatch = internalMutation({
   returns: vMutationReturns,
   handler: async (ctx, { items }) => {
     for (const { id } of items) await ctx.db.delete('backfillQueue', id)
+    for (const [runId, count] of byRun(items)) await track(ctx, runId, 'claimed', { count })
     await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.fetchBatch, {
       items: items.map(({ id: _id, ...entry }) => entry),
     })
@@ -97,8 +136,10 @@ export const fetchBatch = internalAction({
   returns: v.null(),
   handler: async (ctx, { items }): Promise<null> => {
     const retry: Array<Entry> = []
+    const skipped: Array<Entry> = []
+    const failed: Array<Entry> = []
     const later = (item: Entry) =>
-      item.attempts + 1 < MAX_ATTEMPTS && retry.push({ ...item, attempts: item.attempts + 1 })
+      item.attempts + 1 < MAX_ATTEMPTS ? retry.push({ ...item, attempts: item.attempts + 1 }) : failed.push(item)
 
     for (const mailboxId of new Set(items.map((i) => i.mailboxId))) {
       const mine = items.filter((i) => i.mailboxId === mailboxId)
@@ -110,9 +151,13 @@ export const fetchBatch = internalAction({
             externalIds: mine.map((i) => i.gmailId),
           }),
         )
-        for (const item of mine.filter((i) => !existing.has(i.gmailId))) {
+        for (const item of mine) {
+          if (existing.has(item.gmailId)) {
+            skipped.push(item)
+            continue
+          }
           try {
-            await ingestGmailMessage(ctx, token, mailboxId, item.gmailId)
+            await ingestGmailMessage(ctx, token, mailboxId, item.gmailId, item.runId)
           } catch {
             later(item)
           }
@@ -122,6 +167,19 @@ export const fetchBatch = internalAction({
       }
     }
     if (retry.length) await ctx.runMutation(internal.models.mailboxes.gmail.backfill.enqueue, { items: retry })
+    if (skipped.length || failed.length) {
+      await ctx.runMutation(internal.models.mailboxes.gmail.backfill.report, { skipped, failed })
+    }
+    return null
+  },
+})
+
+export const report = internalMutation({
+  args: { skipped: v.array(vEntry), failed: v.array(vEntry) },
+  returns: v.null(),
+  handler: async (ctx, { skipped, failed }) => {
+    for (const [runId, count] of byRun(skipped)) await track(ctx, runId, 'skipped', { count })
+    for (const [runId, count] of byRun(failed)) await track(ctx, runId, 'failed', { count })
     return null
   },
 })

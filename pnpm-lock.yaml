@@ -20,6 +20,9 @@ importers:
       '@convex-dev/react-query':
         specifier: ^0.1.0
         version: 0.1.0(@tanstack/react-query@5.104.3(react@19.3.1))(convex@1.47.0(react@19.3.1))
+      '@convex-dev/sharded-counter':
+        specifier: ^0.2.3
+        version: 0.2.3(convex@1.47.0(react@19.3.1))
       '@convex-dev/workflow':
         specifier: ^0.4.10
         version: 0.4.10(@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))(react@19.3.1))(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))
@@ -383,6 +386,11 @@ packages:
     peerDependencies:
       '@tanstack/react-query': ^5.0.0
       convex: ^1.29.3
+
+  '@convex-dev/sharded-counter@0.2.3':
+    resolution: {integrity: sha512-rKiUHt/cThlj9qiLUe8nGXWQOvotqynyv4WcH5chwfQmXn2SJvt9yMFkVudXRuJl+NIAxSwY9JY0POfB2YZDEg==}
+    peerDependencies:
+      convex: ^1.25.4
 
   '@convex-dev/workflow@0.4.10':
     resolution: {integrity: sha512-BHEDZEJUhZQOuqtop4bZRgomoKFA+JNECat+c9/cAuQmCegn7F0xlAiFiCPtYNm2xyUh3Rv+fJuNhnqs4th1cw==}
@@ -4735,6 +4743,10 @@ snapshots:
   '@convex-dev/react-query@0.1.0(@tanstack/react-query@5.104.3(react@19.3.1))(convex@1.47.0(react@19.3.1))':
     dependencies:
       '@tanstack/react-query': 5.104.3(react@19.3.1)
+      convex: 1.47.0(react@19.3.1)
+
+  '@convex-dev/sharded-counter@0.2.3(convex@1.47.0(react@19.3.1))':
+    dependencies:
       convex: 1.47.0(react@19.3.1)
 
   '@convex-dev/workflow@0.4.10(@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))(react@19.3.1))(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))':

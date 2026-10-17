@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import { start } from '@convex-dev/workflow'
 import { internal } from '../../_generated/api'
 import { internalMutation, internalQuery } from '../../_generated/server'
+import { emailRef, track } from '../../lib/pipeline'
 import schema from '../../schema'
 
 export const ingest = internalMutation({
@@ -9,10 +10,11 @@ export const ingest = internalMutation({
     mailboxId: v.id('mailboxes'),
     externalId: v.string(),
     threadId: v.optional(v.string()),
+    backfillRunId: v.optional(v.id('backfillRuns')),
     mail: schema.tables.messages.validator.pick('rfcMessageId', 'fromName', 'subject', 'receivedAt', 'raw'),
   },
   returns: v.union(v.id('messages'), v.null()),
-  handler: async (ctx, { mailboxId, externalId, threadId, mail }) => {
+  handler: async (ctx, { mailboxId, externalId, threadId, backfillRunId, mail }) => {
     const mailbox = await ctx.db.get('mailboxes', mailboxId)
     if (!mailbox) return null
     const dupe = await ctx.db
@@ -26,9 +28,11 @@ export const ingest = internalMutation({
       mailboxId,
       externalId,
       threadId,
+      backfillRunId,
       read: false,
       status: 'inbox',
     })
+    if (backfillRunId) await track(ctx, backfillRunId, 'fetched', { ref: await emailRef(externalId) })
     await start(ctx, internal.models.messages.triage.triageMessage, { messageId })
     return messageId
   },

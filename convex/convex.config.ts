@@ -4,6 +4,7 @@ import auth from '@convex-dev/auth/convex.config.js'
 import google from '@convex-dev/auth/components/google/convex.config.js'
 import workflow from '@convex-dev/workflow/convex.config.js'
 import batchWorker from '@convex-dev/batch-worker/convex.config.js'
+import shardedCounter from '@convex-dev/sharded-counter/convex.config.js'
 
 const app = defineApp({
   env: {
@@ -22,6 +23,8 @@ const app = defineApp({
     RESEND_API_KEY: v.optional(v.string()),
     // AES-256 key (base64url) for domain mail at rest. Lives only here, never in the database.
     MAIL_ENCRYPTION_KEY: v.optional(v.string()),
+    // Secret for the HMAC refs shown instead of real email ids on the backfill tab. Set your own.
+    ID_HASH_KEY: v.optional(v.string()),
   },
 })
 
@@ -37,5 +40,6 @@ app.use(google, {
 
 app.use(workflow)
 app.use(batchWorker)
+app.use(shardedCounter)
 
 export default app

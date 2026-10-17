@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { ConvexError } from 'convex/values'
-import { ArrowRight, DatabaseZap, Inbox, Layers, Play, ScanText, Sparkles } from 'lucide-react'
+import { ArrowRight, DatabaseZap, Inbox, Layers, Pause, Play, RotateCcw, ScanText, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import { api } from '~/lib/api'
@@ -30,7 +30,12 @@ const Backfill = () => {
 
   return (
     <>
-      <RunControls running={status?.worker?.kind === 'running'} />
+      <RunControls
+        running={status?.worker?.kind === 'running'}
+        sorting={!!status && status.counts.sorted < status.counts.fetched}
+        run={status?.run}
+        failed={status?.counts.failed ?? 0}
+      />
       <div className="flex min-h-0 flex-1">
         <ScrollArea className="min-h-0 flex-1">
           {status ? (
@@ -52,9 +57,23 @@ const Backfill = () => {
   )
 }
 
-const RunControls = ({ running }: { running: boolean }) => {
+const RunControls = ({
+  running,
+  sorting,
+  run,
+  failed,
+}: {
+  running: boolean
+  sorting: boolean
+  run?: Doc<'backfillRuns'>
+  failed: number
+}) => {
   const { results: mailboxes } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
   const startRun = useMutation(api.backfill.startRun)
+  const pauseRun = useMutation(api.backfill.pauseRun)
+  const resumeRun = useMutation(api.backfill.resumeRun)
+  const retryRun = useMutation(api.backfill.retryRun)
+  const canRetry = failed > 0 || (run?.pending ?? []).some((p) => p.reason === 'failed')
   const [mailbox, setMailbox] = useState('all')
   const [days, setDays] = useState('30')
   const [error, setError] = useState<string | null>(null)
@@ -99,8 +118,25 @@ const RunControls = ({ running }: { running: boolean }) => {
             ))}
           </SelectContent>
         </Select>
+        {run && !run.paused && (running || sorting) && (
+          <Button size="sm" variant="outline" onClick={() => void pauseRun({ runId: run._id })}>
+            <Pause /> Pause
+          </Button>
+        )}
+        {run?.paused && (
+          <Button size="sm" variant="outline" onClick={() => void resumeRun({ runId: run._id })}>
+            <Play /> Resume
+          </Button>
+        )}
+        {run && canRetry && !run.paused && (
+          <Button size="sm" variant="outline" onClick={() => void retryRun({ runId: run._id })}>
+            <RotateCcw /> Retry failed
+          </Button>
+        )}
         <Button
           size="sm"
+          disabled={running || run?.paused}
+          title={running || run?.paused ? 'Pause or finish the current run first' : undefined}
           onClick={async () => {
             setError(null)
             try {

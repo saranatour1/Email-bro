@@ -76,6 +76,8 @@ export default defineSchema({
     goalId: v.optional(v.id('goals')),
     // Jev gave up on this email after every retry; it waits in Needs action for a person.
     triageFailed: v.optional(v.boolean()),
+    // Its backfill run was paused before Jev read it; Resume sorts it.
+    triageParked: v.optional(v.boolean()),
     category: v.optional(vCategory),
     focus: v.optional(v.boolean()),
     // Raw Jev probabilities, kept so thresholds can change without asking Jev again.
@@ -97,7 +99,8 @@ export default defineSchema({
     .index('by_userId_and_focus_and_receivedAt', ['userId', 'focus', 'receivedAt'])
     .index('by_userId_and_status_and_receivedAt', ['userId', 'status', 'receivedAt'])
     .index('by_userId_and_route_and_receivedAt', ['userId', 'route', 'receivedAt'])
-    .index('by_userId_and_category_and_receivedAt', ['userId', 'category', 'receivedAt']),
+    .index('by_userId_and_category_and_receivedAt', ['userId', 'category', 'receivedAt'])
+    .index('by_backfillRunId_and_triageParked', ['backfillRunId', 'triageParked']),
 
   // Gmail ids waiting to be fetched by the backfill batch worker.
   backfillQueue: defineTable({
@@ -132,7 +135,28 @@ export default defineSchema({
     mailboxIds: v.array(v.id('mailboxes')),
     days: v.number(),
     startedAt: v.number(),
+    paused: v.optional(v.boolean()),
+    // Listings that stopped early, with the exact args to continue them (Resume or Retry).
+    pending: v.optional(
+      v.array(
+        v.object({
+          mailboxId: v.id('mailboxes'),
+          query: v.string(),
+          limit: v.optional(v.number()),
+          pageToken: v.optional(v.string()),
+          reason: literals('paused', 'failed'),
+          error: v.optional(v.string()),
+        }),
+      ),
+    ),
   }).index('by_userId', ['userId']),
+
+  // Emails a backfill gave up on after every attempt; Retry puts them back in the queue.
+  backfillFailures: defineTable({
+    runId: v.id('backfillRuns'),
+    mailboxId: v.id('mailboxes'),
+    gmailId: v.string(),
+  }).index('by_runId', ['runId']),
 
   // The live log for the backfill tab. Hashed email refs, steps and decisions only; never content.
   pipelineEvents: defineTable({

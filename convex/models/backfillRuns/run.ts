@@ -7,8 +7,9 @@ import { internalMutation, internalQuery } from '../../_generated/server'
 import { userAction, userMutation, userQuery } from '../../lib/functions'
 import { COUNTS, counterKey, counters, track } from '../../lib/pipeline'
 import { vCategory, vRoute } from '../../schema'
-import { WORKER } from '../mailboxes/gmail/backfill'
-import type { QueryCtx } from '../../_generated/server'
+import { WORKER, pingWorker } from '../mailboxes/gmail/backfill'
+import { startTriage } from '../messages/utils'
+import type { MutationCtx, QueryCtx } from '../../_generated/server'
 import type { Doc, Id } from '../../_generated/dataModel'
 
 const STUDY_MODEL = 'anthropic/claude-haiku-5.5'
@@ -27,6 +28,11 @@ const startRun = userMutation({
       (m) => m.provider === 'gmail' && m.status === 'active' && (!mailboxId || m._id === mailboxId),
     )
     if (mailboxes.length === 0) throw new ConvexError('Connect a Gmail account first')
+    // Starting clears the previous run, so never start over one that is still moving.
+    const worker = await ctx.runQuery(components.batchWorker.lib.status, { name: WORKER })
+    if (worker?.kind === 'running')
+      throw new ConvexError('A backfill is still running. Pause it or wait for it to finish.')
+    if (worker?.kind === 'stopped') await ctx.runMutation(components.batchWorker.lib.start, { name: WORKER })
 
     // Convex allows one .paginate() per function, so this second, fixed read uses .take().
     const previous = await ctx.db
@@ -113,7 +119,85 @@ const study = userAction({
   },
 })
 
-export const runApi = { startRun, status, events, study }
+const getOwnedRun = async (ctx: MutationCtx & { userId: Id<'users'> }, runId: Id<'backfillRuns'>) => {
+  const run = await ctx.db.get('backfillRuns', runId)
+  if (run?.userId !== ctx.userId) throw new ConvexError('Run not found')
+  return run
+}
+
+// Pause stops the batch worker taking new batches; in-flight listings park themselves at the next page,
+// and emails already fetched park before Jev reads them.
+const pauseRun = userMutation({
+  args: { runId: v.id('backfillRuns') },
+  handler: async (ctx, { runId }) => {
+    await getOwnedRun(ctx, runId)
+    await ctx.db.patch('backfillRuns', runId, { paused: true })
+    await ctx.runMutation(components.batchWorker.lib.stop, { name: WORKER })
+  },
+})
+
+const resumeRun = userMutation({
+  args: { runId: v.id('backfillRuns') },
+  handler: async (ctx, { runId }) => {
+    const run = await getOwnedRun(ctx, runId)
+    const paused = (run.pending ?? []).filter((p) => p.reason === 'paused')
+    await ctx.db.patch('backfillRuns', runId, {
+      paused: false,
+      pending: (run.pending ?? []).filter((p) => p.reason !== 'paused'),
+    })
+    await ctx.runMutation(components.batchWorker.lib.start, { name: WORKER })
+    await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
+    for (const { mailboxId, query, limit, pageToken } of paused) {
+      await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, {
+        mailboxId,
+        query,
+        limit,
+        pageToken,
+        runId,
+      })
+    }
+  },
+})
+
+// Retries what failed with the same args: failed listings from their page, failed emails back into the queue.
+const retryRun = userMutation({
+  args: { runId: v.id('backfillRuns') },
+  handler: async (ctx, { runId }) => {
+    const run = await getOwnedRun(ctx, runId)
+    const failedListings = (run.pending ?? []).filter((p) => p.reason === 'failed')
+    await ctx.db.patch('backfillRuns', runId, { pending: (run.pending ?? []).filter((p) => p.reason !== 'failed') })
+    for (const { mailboxId, query, limit, pageToken } of failedListings) {
+      await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, {
+        mailboxId,
+        query,
+        limit,
+        pageToken,
+        runId,
+      })
+    }
+    const { page } = await ctx.db
+      .query('backfillFailures')
+      .withIndex('by_runId', (q) => q.eq('runId', runId))
+      .paginate({ numItems: 500, cursor: null })
+    if (page.length === 0) return
+    for (const f of page) {
+      await ctx.db.delete('backfillFailures', f._id)
+      await ctx.db.insert('backfillQueue', {
+        mailboxId: f.mailboxId,
+        gmailId: f.gmailId,
+        attempts: 0,
+        runId,
+        queuedAt: ctx.db.vars.commitTs,
+      })
+    }
+    // They're no longer failures; the retry shows in the log and counters.
+    await counters.subtract(ctx, counterKey(runId, 'failed'), page.length)
+    await track(ctx, runId, 'retry', { count: page.length })
+    await pingWorker(ctx)
+  },
+})
+
+export const runApi = { startRun, status, events, study, pauseRun, resumeRun, retryRun }
 
 export const forStudy = internalQuery({
   args: { runId: v.id('backfillRuns'), userId: v.id('users') },
@@ -156,7 +240,13 @@ export const clear = internalMutation({
       .withIndex('by_runId_and_at', (q) => q.eq('runId', runId))
       .paginate({ numItems: 500, cursor: null })
     for (const e of page) await ctx.db.delete('pipelineEvents', e._id)
-    if (!isDone) {
+    // A second paginated query isn't allowed in one function, so take a fixed page.
+    const failures = await ctx.db
+      .query('backfillFailures')
+      .withIndex('by_runId', (q) => q.eq('runId', runId))
+      .take(500)
+    for (const f of failures) await ctx.db.delete('backfillFailures', f._id)
+    if (!isDone || failures.length === 500) {
       await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.clear, { runId })
       return null
     }
@@ -164,6 +254,25 @@ export const clear = internalMutation({
       await counters.reset(ctx, counterKey(runId, name))
     }
     await ctx.db.delete('backfillRuns', runId)
+    return null
+  },
+})
+
+// Restarts Jev on emails that parked while the run was paused, 100 at a time.
+export const resumeTriage = internalMutation({
+  args: { runId: v.id('backfillRuns') },
+  returns: v.null(),
+  handler: async (ctx, { runId }) => {
+    if ((await ctx.db.get('backfillRuns', runId))?.paused) return null
+    const parked = await ctx.db
+      .query('messages')
+      .withIndex('by_backfillRunId_and_triageParked', (q) => q.eq('backfillRunId', runId).eq('triageParked', true))
+      .take(100)
+    for (const m of parked) {
+      await ctx.db.patch('messages', m._id, { triageParked: undefined })
+      await startTriage(ctx, m._id)
+    }
+    if (parked.length === 100) await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
     return null
   },
 })

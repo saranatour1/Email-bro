@@ -1,12 +1,16 @@
+import { boardStatuses } from '../convex/lib/board.ts'
 import { buildMime } from '../convex/lib/mail.ts'
 import {
   CONNECT_BACKFILL,
+  gmailClaim,
   gmailConnectPatch,
   historyCursor,
   isGoneGmailMessage,
   mergeLabelIds,
   shouldSyncMailbox,
 } from '../convex/lib/gmailSync.ts'
+import { settingsError } from '../convex/lib/oauthError.ts'
+import { runBusy } from '../convex/lib/runBusy.ts'
 import { weekendMorning } from '../convex/lib/snooze.ts'
 import { triagePatch } from '../convex/lib/triagePatch.ts'
 
@@ -98,7 +102,10 @@ const info = triagePatch(
   { route: 'spam', category: 'newsletters', focus: true, jev },
 )
 assert(!('route' in info) && !('status' in info) && !('focus' in info), 'a user placement keeps its column')
-assert(info.category === 'newsletters' && Object.hasOwn(info, 'triage'), 'a user placement still records the label')
+assert(
+  info.category === 'newsletters' && Object.hasOwn(info, 'triage') && Object.hasOwn(info, 'triageFailed'),
+  'a user placement still records the label and clears a failed read',
+)
 
 const spamDrag = triagePatch(
   { status: 'spam', userMoved: true },
@@ -142,5 +149,28 @@ assert(
   JSON.stringify(takeover) === '{"status":"active","provider":"gmail","historyId":"tip"}',
   'a domain row becomes a Gmail mailbox',
 )
+
+assert(gmailClaim(null, 'owner') === 'create', 'a new Gmail address is created')
+assert(gmailClaim({ userId: 'owner', provider: 'gmail' }, 'owner') === 'keep', 'the same user keeps the cursor')
+assert(
+  gmailClaim({ userId: 'squatter', provider: 'domain' }, 'owner') === 'takeover',
+  'a domain row yields to the Gmail account',
+)
+assert(
+  gmailClaim({ userId: 'other', provider: 'gmail' }, 'owner') === 'blocked',
+  'another Gmail connection stays blocked',
+)
+
+assert(boardStatuses('spam').join() === 'spam,inbox,in_progress', 'spam leaves the board once it is handled')
+assert(boardStatuses('info').join() === 'inbox,in_progress', 'handled info leaves the board')
+
+assert(settingsError('access_denied') === 'access_denied', 'a known OAuth error is kept')
+assert(settingsError('expired&connected=you@evil.test') === 'denied', 'an injected connected param is dropped')
+assert(settingsError(null) === 'denied', 'a missing OAuth error is denied')
+
+const done = { queued: 10, claimed: 10, fetched: 10, sorted: 10, skipped: 0, failed: 0, retry: 0 }
+assert(runBusy(done) === false, 'a finished run is idle')
+assert(runBusy({ ...done, claimed: 0, fetched: 0, sorted: 0 }) === true, 'a queued run is busy')
+assert(runBusy({ ...done, sorted: 4 }) === true, 'mail still with Jev keeps the run busy')
 
 console.log('sync bugs ok')

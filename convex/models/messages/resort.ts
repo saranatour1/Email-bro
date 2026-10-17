@@ -1,9 +1,9 @@
 import { v } from 'convex/values'
 import { defineBatchWorkerValidators, ping } from '@convex-dev/batch-worker'
-import { start } from '@convex-dev/workflow'
 import { components, internal } from '../../_generated/api'
 import { internalMutation, internalQuery } from '../../_generated/server'
-import { userMutation } from '../../lib/functions'
+import { userMutation, userQuery } from '../../lib/functions'
+import { startTriage } from './utils'
 
 const BATCH_SIZE = 5
 // One email a second stays well inside Gmail's per-user, per-minute quota while the user keeps working.
@@ -19,7 +19,7 @@ const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBat
 const resortAll = userMutation({
   args: {},
   handler: async (ctx) => {
-    const name = `${PREFIX}${ctx.userId}`
+    const name = workerName(ctx.userId)
     try {
       // Start from the newest email again; throws when this user's worker doesn't exist yet.
       await ctx.runMutation(components.batchWorker.lib.setCursor, { name })
@@ -34,7 +34,46 @@ const resortAll = userMutation({
   },
 })
 
-export const resortApi = { resortAll }
+const workerName = (userId: string) => `${PREFIX}${userId}`
+
+const resortStatus = userQuery({
+  args: {},
+  handler: async (ctx) => await ctx.runQuery(components.batchWorker.lib.status, { name: workerName(ctx.userId) }),
+})
+
+const pauseResort = userMutation({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.runMutation(components.batchWorker.lib.stop, { name: workerName(ctx.userId) })
+  },
+})
+
+const resumeResort = userMutation({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.runMutation(components.batchWorker.lib.start, { name: workerName(ctx.userId) })
+  },
+})
+
+// Runs triage again, with the same message, for every email Jev gave up on.
+const retryFailedTriage = userMutation({
+  args: {},
+  handler: async (ctx) => {
+    const { page } = await ctx.db
+      .query('messages')
+      .withIndex('by_userId_and_route_and_receivedAt', (q) => q.eq('userId', ctx.userId).eq('route', 'action'))
+      .order('desc')
+      .paginate({ numItems: 200, cursor: null })
+    const failed = page.filter((m) => m.triageFailed)
+    for (const m of failed) {
+      await ctx.db.patch('messages', m._id, { userMoved: undefined })
+      await startTriage(ctx, m._id)
+    }
+    return failed.length
+  },
+})
+
+export const resortApi = { resortAll, resortStatus, pauseResort, resumeResort, retryFailedTriage }
 
 export const getBatch = internalQuery({
   args: vQueryArgs,
@@ -58,7 +97,7 @@ export const startBatch = internalMutation({
   handler: async (ctx, { ids }) => {
     for (const messageId of ids) {
       await ctx.db.patch('messages', messageId, { userMoved: undefined })
-      await start(ctx, internal.models.messages.triage.triageMessage, { messageId })
+      await startTriage(ctx, messageId)
     }
     return { debounceMs: BATCH_GAP_MS }
   },

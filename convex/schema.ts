@@ -10,6 +10,9 @@ export const vStatus = literals('inbox', 'in_progress', 'snoozed', 'done', 'canc
 // Jev's decision for each email: its column on the "By Jev" board.
 export const vRoute = literals('action', 'goal', 'info', 'spam')
 
+// Where a matching filter moves an email (statuses a rule may set).
+export const vFilterStatus = literals('in_progress', 'done', 'cancelled')
+
 // Where a matching Jev workflow moves an email. `focus` = Inbox, shown in Focus.
 export const vWorkflowAction = literals('focus', 'in_progress', 'done', 'cancelled', 'spam')
 
@@ -71,6 +74,10 @@ export default defineSchema({
     triage: v.optional(v.any()),
     route: v.optional(vRoute),
     goalId: v.optional(v.id('goals')),
+    // Jev gave up on this email after every retry; it waits in Needs action for a person.
+    triageFailed: v.optional(v.boolean()),
+    // Its backfill run was paused before Jev read it; Resume sorts it.
+    triageParked: v.optional(v.boolean()),
     category: v.optional(vCategory),
     focus: v.optional(v.boolean()),
     // The user picked this status, route, or snooze. Triage keeps that placement until a re-sort.
@@ -84,6 +91,7 @@ export default defineSchema({
         urgency: v.number(),
         categoryConfidence: v.number(),
         workflowId: v.optional(v.id('jevWorkflows')),
+        filterId: v.optional(v.id('filters')),
         sortedAt: v.number(),
       }),
     ),
@@ -93,7 +101,8 @@ export default defineSchema({
     .index('by_userId_and_focus_and_receivedAt', ['userId', 'focus', 'receivedAt'])
     .index('by_userId_and_status_and_receivedAt', ['userId', 'status', 'receivedAt'])
     .index('by_userId_and_route_and_receivedAt', ['userId', 'route', 'receivedAt'])
-    .index('by_userId_and_category_and_receivedAt', ['userId', 'category', 'receivedAt']),
+    .index('by_userId_and_category_and_receivedAt', ['userId', 'category', 'receivedAt'])
+    .index('by_backfillRunId_and_triageParked', ['backfillRunId', 'triageParked']),
 
   // Gmail ids waiting to be fetched by the backfill batch worker.
   backfillQueue: defineTable({
@@ -128,7 +137,28 @@ export default defineSchema({
     mailboxIds: v.array(v.id('mailboxes')),
     days: v.number(),
     startedAt: v.number(),
+    paused: v.optional(v.boolean()),
+    // Listings that stopped early, with the exact args to continue them (Resume or Retry).
+    pending: v.optional(
+      v.array(
+        v.object({
+          mailboxId: v.id('mailboxes'),
+          query: v.string(),
+          limit: v.optional(v.number()),
+          pageToken: v.optional(v.string()),
+          reason: literals('paused', 'failed'),
+          error: v.optional(v.string()),
+        }),
+      ),
+    ),
   }).index('by_userId', ['userId']),
+
+  // Emails a backfill gave up on after every attempt; Retry puts them back in the queue.
+  backfillFailures: defineTable({
+    runId: v.id('backfillRuns'),
+    mailboxId: v.id('mailboxes'),
+    gmailId: v.string(),
+  }).index('by_runId', ['runId']),
 
   // The live log for the backfill tab. Hashed email refs, steps and decisions only; never content.
   pipelineEvents: defineTable({
@@ -140,4 +170,18 @@ export default defineSchema({
     label: v.optional(vCategory),
     at: v.number(),
   }).index('by_runId_and_at', ['runId', 'at']),
+
+  // Gmail-style rules: exact matches on sender and subject, checked before Jev. `|` separates alternatives.
+  filters: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    enabled: v.boolean(),
+    mailboxId: v.optional(v.id('mailboxes')),
+    from: v.optional(v.string()),
+    subject: v.optional(v.string()),
+    route: v.optional(vRoute),
+    label: v.optional(vCategory),
+    status: v.optional(vFilterStatus),
+    markRead: v.optional(v.boolean()),
+  }).index('by_userId', ['userId']),
 })

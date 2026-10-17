@@ -3,7 +3,7 @@ type Category = 'people' | 'updates' | 'notifications' | 'newsletters' | 'promot
 type Action = 'focus' | 'in_progress' | 'done' | 'cancelled' | 'spam'
 type Status = 'inbox' | 'in_progress' | 'done' | 'cancelled' | 'spam'
 
-export type TriageDecision<TGoal extends string, TWorkflow extends string> = {
+export type TriageDecision<TGoal extends string, TWorkflow extends string, TFilter extends string> = {
   route: Route
   goalId?: TGoal
   category: Category
@@ -15,16 +15,17 @@ export type TriageDecision<TGoal extends string, TWorkflow extends string> = {
     urgency: number
     categoryConfidence: number
     workflowId?: TWorkflow
+    filterId?: TFilter
     sortedAt: number
   }
 }
 
 // A user placement keeps category and odds only. Anything still in the inbox can take Jev's status.
-export const triagePatch = <TGoal extends string, TWorkflow extends string>(
+export const triagePatch = <TGoal extends string, TWorkflow extends string, TFilter extends string>(
   message: { status: string; userMoved?: boolean },
-  decision: TriageDecision<TGoal, TWorkflow>,
+  decision: TriageDecision<TGoal, TWorkflow, TFilter>,
 ) => {
-  const recorded = { category: decision.category, jev: decision.jev, triage: undefined }
+  const recorded = { category: decision.category, jev: decision.jev, triage: undefined, triageFailed: undefined }
   if (message.userMoved) return recorded
   const placed = { ...recorded, route: decision.route, goalId: decision.goalId }
   if (message.status !== 'inbox') return placed

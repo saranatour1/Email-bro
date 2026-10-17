@@ -3,7 +3,7 @@ import { internal } from '../../../_generated/api'
 import { env, internalMutation, internalQuery } from '../../../_generated/server'
 import { userAction } from '../../../lib/functions'
 import { gmailFetch, tokenRequest } from '../../../lib/gmail'
-import { gmailConnectPatch } from '../../../lib/gmailSync'
+import { gmailClaim, gmailConnectPatch } from '../../../lib/gmailSync'
 import schema from '../../../schema'
 import type { ActionCtx } from '../../../_generated/server'
 
@@ -89,13 +89,20 @@ export const upsertGmail = internalMutation({
       .query('mailboxes')
       .withIndex('by_address', (q) => q.eq('address', address))
       .first()
-    if (existing && existing.userId !== userId) {
-      throw new ConvexError('This mailbox is connected to another account')
-    }
+    const claim = gmailClaim(existing, userId)
+    if (claim === 'blocked') throw new ConvexError('This mailbox is connected to another account')
     const mailboxId =
       existing?._id ??
       (await ctx.db.insert('mailboxes', { userId, address, provider: 'gmail', status: 'active', historyId }))
-    if (existing) await ctx.db.patch('mailboxes', mailboxId, gmailConnectPatch(existing.provider, historyId))
+    if (existing) {
+      await ctx.db.patch('mailboxes', mailboxId, {
+        ...gmailConnectPatch(existing.provider, historyId),
+        ...(claim === 'takeover' ? { userId } : {}),
+      })
+      if (claim === 'takeover') {
+        await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.connect.reassignMessages, { mailboxId, userId })
+      }
+    }
     const secret = await ctx.db
       .query('mailboxSecrets')
       .withIndex('by_mailboxId', (q) => q.eq('mailboxId', mailboxId))
@@ -103,6 +110,30 @@ export const upsertGmail = internalMutation({
     if (secret) await ctx.db.patch('mailboxSecrets', secret._id, tokens)
     else await ctx.db.insert('mailboxSecrets', { mailboxId, ...tokens })
     return mailboxId
+  },
+})
+
+export const reassignMessages = internalMutation({
+  args: { mailboxId: v.id('mailboxes'), userId: v.id('users'), cursor: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { mailboxId, userId, cursor }) => {
+    const mailbox = await ctx.db.get('mailboxes', mailboxId)
+    if (mailbox?.userId !== userId) return null
+    const page = await ctx.db
+      .query('messages')
+      .withIndex('by_mailboxId_and_externalId', (q) => q.eq('mailboxId', mailboxId))
+      .paginate({ numItems: 32, cursor: cursor ?? null })
+    for (const message of page.page) {
+      if (message.userId !== userId) await ctx.db.patch('messages', message._id, { userId })
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.connect.reassignMessages, {
+        mailboxId,
+        userId,
+        cursor: page.continueCursor,
+      })
+    }
+    return null
   },
 })
 

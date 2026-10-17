@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useAction, useMutation } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
@@ -132,6 +133,13 @@ const JevPanel = ({ message, markdown }: { message: Doc<'messages'>; markdown?: 
   const { results: goals } = usePaginatedQuery(api.goals.list, {}, { initialNumItems: 20 })
   const [showText, setShowText] = useState(false)
   const jev = message.jev
+  if (message.triageFailed) {
+    return (
+      <p className="rounded-md border border-dashed border-red-500/40 p-3 text-sm text-muted-foreground">
+        Jev couldn't read this email after several tries, so it's waiting for you in Needs action. Re-sort to try again.
+      </p>
+    )
+  }
   if (!message.route || !jev) {
     return (
       <p className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">

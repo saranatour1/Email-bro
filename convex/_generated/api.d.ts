@@ -10,6 +10,7 @@
 
 import type * as api_auth from "../api/auth.js";
 import type * as api_backfill from "../api/backfill.js";
+import type * as api_filters from "../api/filters.js";
 import type * as api_goals from "../api/goals.js";
 import type * as api_mailboxes from "../api/mailboxes.js";
 import type * as api_messages from "../api/messages.js";
@@ -17,6 +18,7 @@ import type * as api_users from "../api/users.js";
 import type * as api_workflows from "../api/workflows.js";
 import type * as http from "../http.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_filters from "../lib/filters.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_gmail from "../lib/gmail.js";
 import type * as lib_log from "../lib/log.js";
@@ -24,8 +26,10 @@ import type * as lib_mail from "../lib/mail.js";
 import type * as lib_markdown from "../lib/markdown.js";
 import type * as lib_pipeline from "../lib/pipeline.js";
 import type * as models_backfillRuns_run from "../models/backfillRuns/run.js";
+import type * as models_filters_manage from "../models/filters/manage.js";
 import type * as models_goals_manage from "../models/goals/manage.js";
 import type * as models_jevWorkflows_manage from "../models/jevWorkflows/manage.js";
+import type * as models_jevWorkflows_suggest from "../models/jevWorkflows/suggest.js";
 import type * as models_mailboxes_domain from "../models/mailboxes/domain.js";
 import type * as models_mailboxes_gmail_backfill from "../models/mailboxes/gmail/backfill.js";
 import type * as models_mailboxes_gmail_connect from "../models/mailboxes/gmail/connect.js";
@@ -53,6 +57,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "api/auth": typeof api_auth;
   "api/backfill": typeof api_backfill;
+  "api/filters": typeof api_filters;
   "api/goals": typeof api_goals;
   "api/mailboxes": typeof api_mailboxes;
   "api/messages": typeof api_messages;
@@ -60,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "api/workflows": typeof api_workflows;
   http: typeof http;
   "lib/crypto": typeof lib_crypto;
+  "lib/filters": typeof lib_filters;
   "lib/functions": typeof lib_functions;
   "lib/gmail": typeof lib_gmail;
   "lib/log": typeof lib_log;
@@ -67,8 +73,10 @@ declare const fullApi: ApiFromModules<{
   "lib/markdown": typeof lib_markdown;
   "lib/pipeline": typeof lib_pipeline;
   "models/backfillRuns/run": typeof models_backfillRuns_run;
+  "models/filters/manage": typeof models_filters_manage;
   "models/goals/manage": typeof models_goals_manage;
   "models/jevWorkflows/manage": typeof models_jevWorkflows_manage;
+  "models/jevWorkflows/suggest": typeof models_jevWorkflows_suggest;
   "models/mailboxes/domain": typeof models_mailboxes_domain;
   "models/mailboxes/gmail/backfill": typeof models_mailboxes_gmail_backfill;
   "models/mailboxes/gmail/connect": typeof models_mailboxes_gmail_connect;

@@ -1,9 +1,8 @@
 import { v } from 'convex/values'
-import { start } from '@convex-dev/workflow'
-import { internal } from '../../_generated/api'
 import { internalMutation, internalQuery } from '../../_generated/server'
 import { emailRef, track } from '../../lib/pipeline'
 import schema from '../../schema'
+import { startTriage } from './utils'
 
 export const ingest = internalMutation({
   args: {
@@ -33,7 +32,7 @@ export const ingest = internalMutation({
       status: 'inbox',
     })
     if (backfillRunId) await track(ctx, backfillRunId, 'fetched', { ref: await emailRef(externalId) })
-    await start(ctx, internal.models.messages.triage.triageMessage, { messageId })
+    await startTriage(ctx, messageId)
     return messageId
   },
 })

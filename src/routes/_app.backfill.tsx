@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useAction, useMutation } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
-import { ArrowRight, DatabaseZap, Inbox, Layers, Play, ScanText, Sparkles } from 'lucide-react'
+import { ArrowRight, DatabaseZap, Inbox, Layers, Pause, Play, RotateCcw, ScanText, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import { api } from '~/lib/api'
@@ -30,12 +31,17 @@ const Backfill = () => {
 
   return (
     <>
-      <RunControls running={status?.worker?.kind === 'running'} />
+      <RunControls
+        running={status?.running === true}
+        sorting={!!status && status.counts.sorted < status.counts.fetched}
+        run={status?.run}
+        failed={status?.counts.failed ?? 0}
+      />
       <div className="flex min-h-0 flex-1">
         <ScrollArea className="min-h-0 flex-1">
           {status ? (
             <div className="flex flex-col gap-6 p-6">
-              <Flow counts={status.counts} running={status.worker?.kind === 'running'} />
+              <Flow counts={status.counts} running={status.running} />
               <Lanes routes={status.routes} events={events.results} />
               <Labels labels={status.labels} />
             </div>
@@ -44,7 +50,7 @@ const Backfill = () => {
           )}
         </ScrollArea>
         <aside className="flex w-[26rem] shrink-0 flex-col border-l">
-          <LiveLog events={events.results} startedAt={status?.run.startedAt} />
+          <LiveLog events={events.results} startedAt={status?.run.startedAt} sorted={status?.counts.sorted ?? 0} />
           {runId && <Study runId={runId} />}
         </aside>
       </div>
@@ -52,9 +58,23 @@ const Backfill = () => {
   )
 }
 
-const RunControls = ({ running }: { running: boolean }) => {
+const RunControls = ({
+  running,
+  sorting,
+  run,
+  failed,
+}: {
+  running: boolean
+  sorting: boolean
+  run?: Doc<'backfillRuns'>
+  failed: number
+}) => {
   const { results: mailboxes } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
   const startRun = useMutation(api.backfill.startRun)
+  const pauseRun = useMutation(api.backfill.pauseRun)
+  const resumeRun = useMutation(api.backfill.resumeRun)
+  const retryRun = useMutation(api.backfill.retryRun)
+  const canRetry = failed > 0 || (run?.pending ?? []).some((p) => p.reason === 'failed')
   const [mailbox, setMailbox] = useState('all')
   const [days, setDays] = useState('30')
   const [error, setError] = useState<string | null>(null)
@@ -99,8 +119,25 @@ const RunControls = ({ running }: { running: boolean }) => {
             ))}
           </SelectContent>
         </Select>
+        {run && !run.paused && (running || sorting) && (
+          <Button size="sm" variant="outline" onClick={() => void pauseRun({ runId: run._id })}>
+            <Pause /> Pause
+          </Button>
+        )}
+        {run?.paused && (
+          <Button size="sm" variant="outline" onClick={() => void resumeRun({ runId: run._id })}>
+            <Play /> Resume
+          </Button>
+        )}
+        {run && canRetry && !run.paused && (
+          <Button size="sm" variant="outline" onClick={() => void retryRun({ runId: run._id })}>
+            <RotateCcw /> Retry failed
+          </Button>
+        )}
         <Button
           size="sm"
+          disabled={running || run?.paused}
+          title={running || run?.paused ? 'Pause or finish the current run first' : undefined}
           onClick={async () => {
             setError(null)
             try {
@@ -229,10 +266,10 @@ const clock = (ms: number) =>
   `.${String(ms % 1000).padStart(3, '0')}`
 
 // Convex-dashboard-style log stream of the run, with live throughput.
-const LiveLog = ({ events, startedAt }: { events: Array<Event>; startedAt?: number }) => {
+const LiveLog = ({ events, startedAt, sorted }: { events: Array<Event>; startedAt?: number; sorted: number }) => {
   const latest = events.at(0)?.at ?? 0
   const lastMinute = events.filter((e) => e.kind === 'sorted' && latest - e.at < 60_000).length
-  const sorted = events.filter((e) => e.kind === 'sorted').length
+  // The average uses the run's sorted counter, not just the loaded page of events.
   const minutes = startedAt && latest > startedAt ? (latest - startedAt) / 60_000 : 0
 
   return (

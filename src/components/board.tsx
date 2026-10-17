@@ -1,12 +1,26 @@
 import { useState } from 'react'
-import { ChevronDown, Clock, Eye, EyeOff, HelpCircle, MoreHorizontal, RefreshCw, ScanText } from 'lucide-react'
+import {
+  ChevronDown,
+  Clock,
+  Eye,
+  EyeOff,
+  HelpCircle,
+  MoreHorizontal,
+  Pause,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  ScanText,
+} from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useMutation, usePaginatedQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import type { DragEvent, ReactNode } from 'react'
 import type { ListView } from '~/components/app-shell'
 import type { Display } from '~/components/display-options'
 import type { Route, Status } from '~/lib/status'
+import { useStablePaginatedQuery } from '~/hooks/use-stable-paginated-query'
 import { api } from '~/lib/api'
 import { LABELS, ROUTES, StatusIcon, labelMeta } from '~/lib/status'
 import { SNOOZE_OPTIONS } from '~/components/status-menu'
@@ -114,7 +128,14 @@ export const Board = ({
 // Shows the flow the board follows, and re-runs it on existing mail.
 const JevBar = () => {
   const resortAll = useMutation(api.messages.resortAll)
-  const [started, setStarted] = useState(false)
+  const pauseResort = useMutation(api.messages.pauseResort)
+  const resumeResort = useMutation(api.messages.resumeResort)
+  const retryFailedTriage = useMutation(api.messages.retryFailedTriage)
+  const worker = useQuery(api.messages.resortStatus)
+  const [retried, setRetried] = useState<number | null>(null)
+  const running = worker?.kind === 'running'
+  const paused = worker?.kind === 'stopped'
+
   return (
     <div className="flex h-10 shrink-0 items-center gap-2 border-b px-4 text-xs text-muted-foreground">
       <ScanText className="size-3.5" />
@@ -126,19 +147,31 @@ const JevBar = () => {
           {i < ROUTES.length - 1 && <span>·</span>}
         </span>
       ))}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="ml-auto h-7 text-xs"
-        disabled={started}
-        onClick={async () => {
-          setStarted(true)
-          await resortAll()
-        }}
-      >
-        <RefreshCw className={cn(started && 'animate-spin')} />
-        {started ? 'Re-sorting…' : 'Re-sort with Jev'}
-      </Button>
+      <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={async () => setRetried(await retryFailedTriage())}
+          title="Run Jev again on emails it couldn't read"
+        >
+          <RotateCcw /> {retried === null ? 'Retry failed' : `Retrying ${retried}`}
+        </Button>
+        {(running || paused) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => void (running ? pauseResort() : resumeResort())}
+          >
+            {running ? <Pause /> : <Play />} {running ? 'Pause re-sort' : 'Resume re-sort'}
+          </Button>
+        )}
+        <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={running} onClick={() => void resortAll()}>
+          <RefreshCw className={cn(running && 'animate-spin')} />
+          {running ? 'Re-sorting…' : 'Re-sort with Jev'}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -188,14 +221,16 @@ const BoardColumn = ({
   selectedId?: Id<'messages'>
   onHide: () => void
 }) => {
-  const byRoute = usePaginatedQuery(
+  const byRoute = useStablePaginatedQuery(
     api.messages.byRoute,
     column.route ? { route: column.route, mailboxId: inbox } : 'skip',
     { initialNumItems: 25 },
   )
-  const byView = usePaginatedQuery(api.messages.list, column.view ? { view: column.view, mailboxId: inbox } : 'skip', {
-    initialNumItems: 25,
-  })
+  const byView = useStablePaginatedQuery(
+    api.messages.list,
+    column.view ? { view: column.view, mailboxId: inbox } : 'skip',
+    { initialNumItems: 25 },
+  )
   const { results, status, loadMore } = column.route ? byRoute : byView
   const { over, droppable, handlers } = useColumnDrop(column)
 
@@ -347,6 +382,7 @@ const Card = ({
               <Clock className="size-3" /> Today
             </Pill>
           )}
+          {m.triageFailed && <Pill className="text-red-500">Couldn't read</Pill>}
           {top < UNSURE && (
             <Pill className="border-dashed" title={`Jev was ${Math.round(top * 100)}% sure; drag it if it's wrong`}>
               <HelpCircle className="size-3" /> Check me

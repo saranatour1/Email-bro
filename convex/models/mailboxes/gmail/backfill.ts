@@ -5,6 +5,7 @@ import { internalAction, internalMutation, internalQuery } from '../../../_gener
 import { accessToken, gmailFetch } from '../../../lib/gmail'
 import { errorKind, wideEvent } from '../../../lib/log'
 import { track } from '../../../lib/pipeline'
+import schema from '../../../schema'
 import { ingestGmailMessage } from '../utils'
 import type { Infer } from 'convex/values'
 import type { MutationCtx } from '../../../_generated/server'
@@ -30,7 +31,7 @@ const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBat
 
 export const WORKER = 'gmail-backfill'
 
-const pingWorker = (ctx: MutationCtx) =>
+export const pingWorker = (ctx: MutationCtx) =>
   ping(ctx, components.batchWorker, {
     name: WORKER,
     workQuery: internal.models.mailboxes.gmail.backfill.getBatch,
@@ -48,6 +49,8 @@ const byRun = (items: Array<{ runId?: Id<'backfillRuns'> }>) => {
 // continuing in a fresh action every few pages so a big mailbox never hits the action time limit.
 const PAGES_PER_ACTION = 20
 
+const LIST_ATTEMPTS = 3
+
 export const start = internalAction({
   args: {
     mailboxId: v.id('mailboxes'),
@@ -55,28 +58,79 @@ export const start = internalAction({
     limit: v.optional(v.number()),
     runId: v.optional(v.id('backfillRuns')),
     pageToken: v.optional(v.string()),
+    attempt: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const { mailboxId, query, runId } = args
-    const token = await accessToken(ctx, mailboxId)
     let limit = args.limit
     let pageToken = args.pageToken
-    for (let pages = 0; pages < PAGES_PER_ACTION; pages++) {
-      const size = Math.min(PAGE_SIZE, limit ?? PAGE_SIZE)
-      const params = new URLSearchParams({ q: query, maxResults: String(size) })
-      if (pageToken) params.set('pageToken', pageToken)
-      const page = (await gmailFetch(token, `/messages?${params}`)) as {
-        messages?: Array<{ id: string }>
-        nextPageToken?: string
+    const park = (reason: 'paused' | 'failed', error?: string) =>
+      runId
+        ? ctx.runMutation(internal.models.mailboxes.gmail.backfill.park, {
+            runId,
+            listing: { mailboxId, query, limit, pageToken, reason, error },
+          })
+        : null
+    try {
+      const token = await accessToken(ctx, mailboxId)
+      for (let pages = 0; pages < PAGES_PER_ACTION; pages++) {
+        if (runId && (await ctx.runQuery(internal.models.mailboxes.gmail.backfill.isPaused, { runId }))) {
+          await park('paused')
+          return null
+        }
+        const size = Math.min(PAGE_SIZE, limit ?? PAGE_SIZE)
+        const params = new URLSearchParams({ q: query, maxResults: String(size) })
+        if (pageToken) params.set('pageToken', pageToken)
+        const page = (await gmailFetch(token, `/messages?${params}`)) as {
+          messages?: Array<{ id: string }>
+          nextPageToken?: string
+        }
+        const items = (page.messages ?? []).map((m) => ({ mailboxId, gmailId: m.id, attempts: 0, runId }))
+        if (items.length) await ctx.runMutation(internal.models.mailboxes.gmail.backfill.enqueue, { items })
+        if (limit !== undefined) limit -= items.length
+        pageToken = page.nextPageToken
+        if (!pageToken || (limit !== undefined && limit <= 0)) return null
       }
-      const items = (page.messages ?? []).map((m) => ({ mailboxId, gmailId: m.id, attempts: 0, runId }))
-      if (items.length) await ctx.runMutation(internal.models.mailboxes.gmail.backfill.enqueue, { items })
-      if (limit !== undefined) limit -= items.length
-      pageToken = page.nextPageToken
-      if (!pageToken || (limit !== undefined && limit <= 0)) return null
+      await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, {
+        ...args,
+        limit,
+        pageToken,
+        attempt: 0,
+      })
+    } catch (e) {
+      // Quota and token errors are often brief: try the same page again, then park it for Retry.
+      const attempt = (args.attempt ?? 0) + 1
+      if (attempt < LIST_ATTEMPTS) {
+        await ctx.scheduler.runAfter(attempt * 60_000, internal.models.mailboxes.gmail.backfill.start, {
+          ...args,
+          limit,
+          pageToken,
+          attempt,
+        })
+      } else {
+        await park('failed', errorKind(e))
+      }
     }
-    await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, { ...args, limit, pageToken })
+    return null
+  },
+})
+
+export const isPaused = internalQuery({
+  args: { runId: v.id('backfillRuns') },
+  returns: v.boolean(),
+  handler: async (ctx, { runId }) => (await ctx.db.get('backfillRuns', runId))?.paused === true,
+})
+
+// Remembers where a listing stopped so Resume or Retry can continue it with the same args.
+export const park = internalMutation({
+  args: { runId: v.id('backfillRuns'), listing: schema.tables.backfillRuns.validator.fields.pending.element },
+  returns: v.null(),
+  handler: async (ctx, { runId, listing }) => {
+    const run = await ctx.db.get('backfillRuns', runId)
+    if (!run) return null
+    await ctx.db.patch('backfillRuns', runId, { pending: [...(run.pending ?? []), listing] })
+    if (listing.reason === 'failed') await track(ctx, runId, 'failed', { ref: `listing ${listing.error}`, count: 0 })
     return null
   },
 })
@@ -189,6 +243,9 @@ export const report = internalMutation({
   handler: async (ctx, { skipped, failed }) => {
     for (const [runId, count] of byRun(skipped)) await track(ctx, runId, 'skipped', { count })
     for (const [runId, count] of byRun(failed)) await track(ctx, runId, 'failed', { count })
+    for (const { runId, mailboxId, gmailId } of failed) {
+      if (runId) await ctx.db.insert('backfillFailures', { runId, mailboxId, gmailId })
+    }
     return null
   },
 })

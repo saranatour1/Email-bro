@@ -51,3 +51,11 @@ export const gmailConnectPatch = (provider: 'gmail' | 'domain', historyId: strin
   provider === 'gmail'
     ? { status: 'active' as const, lastError: undefined }
     : { status: 'active' as const, lastError: undefined, provider: 'gmail' as const, historyId }
+
+// A domain row has no proof of ownership. The Gmail account that just authorized that address takes it.
+export const gmailClaim = (existing: { userId: string; provider: 'gmail' | 'domain' } | null, userId: string) => {
+  if (!existing) return 'create' as const
+  if (existing.userId === userId) return 'keep' as const
+  if (existing.provider === 'domain') return 'takeover' as const
+  return 'blocked' as const
+}

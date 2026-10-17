@@ -36,7 +36,7 @@ type Env = {
   readonly CLOUDFLARE_EMAIL_TOKEN: string | undefined;
   readonly GOOGLE_CLIENT_ID: string;
   readonly GOOGLE_CLIENT_SECRET: string;
-  readonly ID_HASH_KEY: string | undefined;
+  readonly ID_HASH_KEY: string;
   readonly INBOUND_SECRET: string | undefined;
   readonly MAIL_ENCRYPTION_KEY: string | undefined;
   readonly RESEND_API_KEY: string | undefined;

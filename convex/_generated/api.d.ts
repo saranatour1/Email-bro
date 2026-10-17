@@ -9,6 +9,7 @@
  */
 
 import type * as api_auth from "../api/auth.js";
+import type * as api_goals from "../api/goals.js";
 import type * as api_mailboxes from "../api/mailboxes.js";
 import type * as api_messages from "../api/messages.js";
 import type * as api_users from "../api/users.js";
@@ -18,6 +19,8 @@ import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_gmail from "../lib/gmail.js";
 import type * as lib_mail from "../lib/mail.js";
+import type * as lib_markdown from "../lib/markdown.js";
+import type * as models_goals_manage from "../models/goals/manage.js";
 import type * as models_jevWorkflows_manage from "../models/jevWorkflows/manage.js";
 import type * as models_mailboxes_domain from "../models/mailboxes/domain.js";
 import type * as models_mailboxes_gmail_backfill from "../models/mailboxes/gmail/backfill.js";
@@ -29,6 +32,7 @@ import type * as models_mailboxes_utils from "../models/mailboxes/utils.js";
 import type * as models_messages_ingest from "../models/messages/ingest.js";
 import type * as models_messages_list from "../models/messages/list.js";
 import type * as models_messages_read from "../models/messages/read.js";
+import type * as models_messages_resort from "../models/messages/resort.js";
 import type * as models_messages_send from "../models/messages/send.js";
 import type * as models_messages_status from "../models/messages/status.js";
 import type * as models_messages_triage from "../models/messages/triage.js";
@@ -43,6 +47,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "api/auth": typeof api_auth;
+  "api/goals": typeof api_goals;
   "api/mailboxes": typeof api_mailboxes;
   "api/messages": typeof api_messages;
   "api/users": typeof api_users;
@@ -52,6 +57,8 @@ declare const fullApi: ApiFromModules<{
   "lib/functions": typeof lib_functions;
   "lib/gmail": typeof lib_gmail;
   "lib/mail": typeof lib_mail;
+  "lib/markdown": typeof lib_markdown;
+  "models/goals/manage": typeof models_goals_manage;
   "models/jevWorkflows/manage": typeof models_jevWorkflows_manage;
   "models/mailboxes/domain": typeof models_mailboxes_domain;
   "models/mailboxes/gmail/backfill": typeof models_mailboxes_gmail_backfill;
@@ -63,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   "models/messages/ingest": typeof models_messages_ingest;
   "models/messages/list": typeof models_messages_list;
   "models/messages/read": typeof models_messages_read;
+  "models/messages/resort": typeof models_messages_resort;
   "models/messages/send": typeof models_messages_send;
   "models/messages/status": typeof models_messages_status;
   "models/messages/triage": typeof models_messages_triage;

@@ -14,9 +14,11 @@ import {
   Settings,
   Sparkles,
   SquareKanban,
+  Target,
+  Workflow as WorkflowIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { Id } from '../../convex/_generated/dataModel'
+import type { Doc, Id } from '../../convex/_generated/dataModel'
 import type { Category, Status } from '~/lib/status'
 import { api } from '~/lib/api'
 import { LABELS, STATUSES, StatusIcon } from '~/lib/status'
@@ -41,6 +43,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -169,14 +174,27 @@ const InboxSwitcher = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
 const itemClass =
   'h-7 text-[13px] data-[active=true]:bg-sidebar-accent data-[active=true]:font-normal data-[active=true]:ring-1 data-[active=true]:ring-sidebar-ring/50'
 
+const INBOX_COLORS = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-sky-500', 'bg-violet-500']
+
 const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
   const { view } = useParams({ strict: false })
-  const nav = (id: View, icon: ReactNode, label: string) => (
+  const { results: mailboxes } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
+  // `scope` undefined = every inbox; Status and Labels follow whichever inbox is selected.
+  const nav = (id: View, icon: ReactNode, label: string, scope = inbox, active = view === id) => (
     <SidebarMenuItem key={id}>
-      <SidebarMenuButton asChild isActive={view === id} tooltip={label} className={itemClass}>
-        <Link to="/mail/$view" params={{ view: id }} search={{ inbox }}>
+      <SidebarMenuButton asChild isActive={active} tooltip={label} className={itemClass}>
+        <Link to="/mail/$view" params={{ view: id }} search={{ inbox: scope }}>
           {icon}
           <span>{label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
+  const page = (to: '/goals' | '/workflows' | '/settings', icon: ReactNode, label: string) => (
+    <SidebarMenuItem key={to}>
+      <SidebarMenuButton asChild tooltip={label} className={itemClass}>
+        <Link to={to} search={{ inbox }} activeProps={{ 'data-active': true }}>
+          {icon} <span>{label}</span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -187,11 +205,24 @@ const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
       <SidebarContent>
         <SidebarGroup className="pt-0">
           <SidebarMenu>
-            {nav('focus', <Sparkles />, 'Focus')}
-            {nav('board', <SquareKanban />, 'Board')}
-            {nav('all', <Inbox />, 'All mail')}
+            {nav('focus', <Sparkles />, 'Focus', undefined, !inbox && view === 'focus')}
+            {nav('board', <SquareKanban />, 'Board', undefined, !inbox && view === 'board')}
+            {nav('all', <Inbox />, 'All mail', undefined, !inbox && view === 'all')}
           </SidebarMenu>
         </SidebarGroup>
+        {mailboxes.length > 0 && (
+          <Section title="Inboxes">
+            {mailboxes.map((m, i) => (
+              <InboxItem
+                key={m._id}
+                mailbox={m}
+                color={INBOX_COLORS[i % INBOX_COLORS.length]}
+                inbox={inbox}
+                view={view}
+              />
+            ))}
+          </Section>
+        )}
         <Section title="Status">
           {STATUSES.filter((s) => s.id !== 'inbox').map((s) => nav(s.id, <StatusIcon status={s.id} />, s.label))}
         </Section>
@@ -206,20 +237,82 @@ const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
             ),
           )}
         </Section>
+        <Section title="Automate">
+          {page('/goals', <Target />, 'Goals')}
+          {page('/workflows', <WorkflowIcon />, 'Workflows')}
+          {page('/settings', <Settings />, 'Mailboxes')}
+        </Section>
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Mailboxes" className={itemClass}>
-              <Link to="/settings" search={{ inbox }} activeProps={{ 'data-active': true }}>
-                <Settings /> <span>Mailboxes</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <CollapseButton />
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+  )
+}
+
+const INBOX_VIEWS: Array<{ id: View; label: string }> = [
+  { id: 'focus', label: 'Focus' },
+  { id: 'board', label: 'Board' },
+  { id: 'all', label: 'All mail' },
+]
+
+// A mailbox as a Linear "team": a colored initial that expands into its own views.
+const InboxItem = ({
+  mailbox,
+  color,
+  inbox,
+  view,
+}: {
+  mailbox: Doc<'mailboxes'>
+  color: string
+  inbox?: Id<'mailboxes'>
+  view?: string
+}) => {
+  const [open, setOpen] = useState(mailbox._id === inbox)
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        tooltip={mailbox.address}
+        className={itemClass}
+      >
+        <span
+          className={cn(
+            'flex size-4 items-center justify-center rounded text-[10px] font-semibold text-white uppercase',
+            color,
+          )}
+        >
+          {mailbox.address[0]}
+        </span>
+        <span className="truncate">{mailbox.address.split('@')[0]}</span>
+        {mailbox.status === 'error' && (
+          <span className="size-1.5 shrink-0 rounded-full bg-amber-500" aria-label="Needs reconnecting" />
+        )}
+        <ChevronDown
+          className={cn('ml-auto size-3 text-muted-foreground transition-transform', !open && '-rotate-90')}
+        />
+      </SidebarMenuButton>
+      {open && (
+        <SidebarMenuSub>
+          {INBOX_VIEWS.map((v) => (
+            <SidebarMenuSubItem key={v.id}>
+              <SidebarMenuSubButton
+                asChild
+                isActive={inbox === mailbox._id && view === v.id}
+                className="h-7 text-[13px]"
+              >
+                <Link to="/mail/$view" params={{ view: v.id }} search={{ inbox: mailbox._id }}>
+                  {v.label}
+                </Link>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      )}
+    </SidebarMenuItem>
   )
 }
 

@@ -7,6 +7,9 @@ export const vCategory = literals('people', 'updates', 'notifications', 'newslet
 // Only `inbox` can show in Focus.
 export const vStatus = literals('inbox', 'in_progress', 'snoozed', 'done', 'cancelled', 'spam')
 
+// Jev's decision for each email: its column on the "By Jev" board.
+export const vRoute = literals('action', 'goal', 'info', 'spam')
+
 // Where a matching Jev workflow moves an email. `focus` = Inbox, shown in Focus.
 export const vWorkflowAction = literals('focus', 'in_progress', 'done', 'cancelled', 'spam')
 
@@ -58,17 +61,23 @@ export default defineSchema({
     read: v.boolean(),
     status: vStatus,
     snoozedUntil: v.optional(v.number()),
-    // Set by triage. `focus` = shows in the default view; only ever true while status is `inbox`.
+    // Set by Jev. Undefined route = Jev hasn't read it yet. `focus` = needs you; only true while status is `inbox`.
+    // Legacy triage from before routes; cleared when an email is re-sorted.
+    triage: v.optional(v.any()),
+    route: v.optional(vRoute),
+    goalId: v.optional(v.id('goals')),
     category: v.optional(vCategory),
     focus: v.optional(v.boolean()),
-    triage: v.optional(
+    // Raw Jev probabilities, kept so thresholds can change without asking Jev again.
+    jev: v.optional(
       v.object({
         model: v.string(),
+        routeProbabilities: v.record(v.string(), v.number()),
+        // 0 = can wait, 1 = this week, 2 = today.
+        urgency: v.number(),
         categoryConfidence: v.number(),
-        // Raw Jev probabilities, kept so thresholds can change without re-running inference.
-        needsAction: v.number(),
-        fromRealPerson: v.number(),
         workflowId: v.optional(v.id('jevWorkflows')),
+        sortedAt: v.number(),
       }),
     ),
   })
@@ -76,6 +85,7 @@ export default defineSchema({
     .index('by_userId_and_receivedAt', ['userId', 'receivedAt'])
     .index('by_userId_and_focus_and_receivedAt', ['userId', 'focus', 'receivedAt'])
     .index('by_userId_and_status_and_receivedAt', ['userId', 'status', 'receivedAt'])
+    .index('by_userId_and_route_and_receivedAt', ['userId', 'route', 'receivedAt'])
     .index('by_userId_and_category_and_receivedAt', ['userId', 'category', 'receivedAt']),
 
   // Gmail ids waiting to be fetched by the backfill batch worker.
@@ -94,5 +104,13 @@ export default defineSchema({
     action: vWorkflowAction,
     mailboxId: v.optional(v.id('mailboxes')),
     enabled: v.boolean(),
+  }).index('by_userId', ['userId']),
+
+  // What the user is working towards; Jev routes related mail to the Goal column.
+  goals: defineTable({
+    userId: v.id('users'),
+    title: v.string(),
+    details: v.optional(v.string()),
+    active: v.boolean(),
   }).index('by_userId', ['userId']),
 })

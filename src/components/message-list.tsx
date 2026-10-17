@@ -173,9 +173,10 @@ const MessageRow = ({
   )
 }
 
-export const Pill = ({ children, className }: { children: ReactNode; className?: string }) => {
+export const Pill = ({ children, className, title }: { children: ReactNode; className?: string; title?: string }) => {
   return (
     <span
+      title={title}
       className={cn(
         'flex h-6 shrink-0 items-center gap-1.5 rounded-full border px-2 text-xs text-muted-foreground',
         className,

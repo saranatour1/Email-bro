@@ -4,9 +4,9 @@ import { useMutation, usePaginatedQuery } from 'convex/react'
 import { ConvexError } from 'convex/values'
 import { Trash2, Workflow } from 'lucide-react'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
+import type { Status } from '~/lib/status'
 import { api } from '~/lib/api'
 import { StatusIcon } from '~/lib/status'
-import type { Status } from '~/lib/status'
 import { PageHeader } from '~/components/app-shell'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
@@ -55,7 +55,9 @@ const Workflows = () => {
                 <Workflow className="size-5" />
               </span>
               <p className="font-medium">No workflows yet.</p>
-              <p className="text-sm text-muted-foreground">Describe a kind of email in plain words and choose where it goes.</p>
+              <p className="text-sm text-muted-foreground">
+                Describe a kind of email in plain words and choose where it goes.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
@@ -74,7 +76,10 @@ const Workflows = () => {
                 </thead>
                 <tbody>
                   {workflows.map((w) => (
-                    <tr key={w._id} className="align-top [&>td]:border-b [&>td]:px-3 [&>td]:py-2.5 last:[&>td]:border-b-0">
+                    <tr
+                      key={w._id}
+                      className="align-top [&>td]:border-b [&>td]:px-3 [&>td]:py-2.5 last:[&>td]:border-b-0"
+                    >
                       <td className="font-medium">{w.name}</td>
                       <td className="max-w-80 text-muted-foreground">{w.condition}</td>
                       <td>
@@ -154,7 +159,13 @@ const NewWorkflow = ({ mailboxes }: { mailboxes: Array<Doc<'mailboxes'>> }) => {
         >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="wf-name">Name</Label>
-            <Input id="wf-name" required placeholder="Job applications" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              id="wf-name"
+              required
+              placeholder="Job applications"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="wf-inbox">Inbox</Label>

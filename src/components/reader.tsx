@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useAction, useMutation, useQuery } from 'convex/react'
+import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
-import { Check, Mail, Reply, X } from 'lucide-react'
-import type { Id } from '../../convex/_generated/dataModel'
+import { Check, ChevronDown, Mail, Reply, ScanText, X } from 'lucide-react'
+import type { Doc, Id } from '../../convex/_generated/dataModel'
 import { api } from '~/lib/api'
-import { labelMeta } from '~/lib/status'
+import { ROUTES, labelMeta, routeMeta } from '~/lib/status'
 import { cn } from '~/lib/utils'
 import { Pill } from '~/components/message-list'
 import { StatusMenu } from '~/components/status-menu'
@@ -103,6 +103,7 @@ export const Reader = ({
             {content && <span className="font-mono"> &lt;{content.from}&gt;</span>} ·{' '}
             {new Date(message.receivedAt).toLocaleString()}
           </div>
+          <JevPanel message={message} markdown={content?.markdown} />
           {replying && <Composer id={id} onDone={() => setReplying(false)} />}
           <div className="mt-3">
             {content ? (
@@ -113,6 +114,73 @@ export const Reader = ({
           </div>
         </article>
       </ScrollArea>
+    </section>
+  )
+}
+
+const URGENCY = ['Can wait', 'This week', 'Today']
+
+// How Jev sorted this email: its decision, the odds behind it, and the clean text it read.
+const JevPanel = ({ message, markdown }: { message: Doc<'messages'>; markdown?: string }) => {
+  const { results: goals } = usePaginatedQuery(api.goals.list, {}, { initialNumItems: 20 })
+  const [showText, setShowText] = useState(false)
+  const jev = message.jev
+  if (!message.route || !jev) {
+    return (
+      <p className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+        <ScanText className="size-4 animate-pulse" /> Jev is reading this email…
+      </p>
+    )
+  }
+  const route = routeMeta(message.route)
+  const goal = goals.find((g) => g._id === message.goalId)
+  const urgency = URGENCY[Math.min(2, Math.round(jev.urgency))]
+
+  return (
+    <section className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Jev sorted this into</span>
+        <Pill className={route.color}>
+          <route.icon className="size-3" /> {route.label}
+        </Pill>
+        {goal && <Pill className="text-emerald-500">{goal.title}</Pill>}
+        <Pill>{urgency}</Pill>
+      </div>
+      <div className="grid gap-1.5">
+        {ROUTES.filter((r) => r.id in jev.routeProbabilities).map((r) => {
+          const p = jev.routeProbabilities[r.id] ?? 0
+          return (
+            <div key={r.id} className="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-2 text-xs">
+              <span className="text-muted-foreground">{r.label}</span>
+              <span className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <span
+                  className={cn('block h-full rounded-full bg-current', r.color)}
+                  style={{ width: `${p * 100}%` }}
+                />
+              </span>
+              <span className="text-right font-mono text-muted-foreground">{Math.round(p * 100)}%</span>
+            </div>
+          )
+        })}
+      </div>
+      {markdown !== undefined && (
+        <div>
+          <button
+            type="button"
+            aria-expanded={showText}
+            onClick={() => setShowText(!showText)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <ChevronDown className={cn('size-3 transition-transform', !showText && '-rotate-90')} />
+            What Jev read
+          </button>
+          {showText && (
+            <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-background p-3 font-mono text-xs whitespace-pre-wrap text-muted-foreground">
+              {markdown || '(empty after cleaning)'}
+            </pre>
+          )}
+        </div>
+      )}
     </section>
   )
 }

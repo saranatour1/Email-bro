@@ -72,9 +72,11 @@ export const bytesToBase64Url = (bytes: Uint8Array): string => {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-const utf8Base64 = (s: string) => bytesToBase64Url(new TextEncoder().encode(s)).replace(/-/g, '+').replace(/_/g, '/')
+const utf8Base64 = (s: string) => {
+  const raw = bytesToBase64Url(new TextEncoder().encode(s)).replace(/-/g, '+').replace(/_/g, '/')
+  return raw + '='.repeat((4 - (raw.length % 4)) % 4)
+}
 
-// Plain-text RFC 5322 message; non-ASCII subject/body are base64-encoded.
 export const buildMime = (m: {
   from: string
   to: string

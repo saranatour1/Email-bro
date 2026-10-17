@@ -4,6 +4,7 @@ import { internal } from '../../_generated/api'
 import { internalMutation } from '../../_generated/server'
 import { userMutation } from '../../lib/functions'
 import { vRoute } from '../../schema'
+import { SNOOZE_MIN_MS } from '../../lib/snooze'
 import { getOwned } from './utils'
 import type { vStatus } from '../../schema'
 import type { MutationCtx } from '../../_generated/server'
@@ -31,7 +32,7 @@ const snooze = userMutation({
   handler: async (ctx, { messageId, until }) => {
     await getOwned(ctx, messageId)
     const now = Date.now()
-    if (until < now + 60_000 || until > now + 366 * 86_400_000) {
+    if (until < now + SNOOZE_MIN_MS || until > now + 366 * 86_400_000) {
       throw new ConvexError('Pick a time between a minute and a year from now')
     }
     await moveTo(ctx, messageId, 'snoozed', { snoozedUntil: until })

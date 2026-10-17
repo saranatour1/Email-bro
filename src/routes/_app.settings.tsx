@@ -43,7 +43,7 @@ const Settings = () => {
         <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
           {connected && (
             <p className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm">
-              Connected <span className="font-mono">{connected}</span>. The last 7 days of your inbox are being sorted
+              Connected <span className="font-mono">{connected}</span>. The last 30 days of your inbox are being sorted
               now.
             </p>
           )}

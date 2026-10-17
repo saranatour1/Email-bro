@@ -31,6 +31,7 @@ const startRun = userMutation({
     const previous = await ctx.db
       .query('backfillRuns')
       .withIndex('by_userId', (q) => q.eq('userId', ctx.userId))
+      .order('desc')
       .paginate({ numItems: 10, cursor: null })
     for (const run of previous.page)
       await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.clear, { runId: run._id })

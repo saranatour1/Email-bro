@@ -9,7 +9,8 @@ import type { vCategory, vRoute } from '../schema'
 // One shard per key keeps the live status query to one read per counter; raise it if writes start to conflict.
 export const counters = new ShardedCounter(components.shardedCounter, { defaultShards: 1 })
 
-export const COUNTS = ['queued', 'claimed', 'skipped', 'fetched', 'sorted', 'retry', 'failed'] as const
+// `parked` has no log event: it's how many fetched emails are waiting for Resume.
+export const COUNTS = ['queued', 'claimed', 'skipped', 'fetched', 'sorted', 'retry', 'failed', 'parked'] as const
 export type Count = (typeof COUNTS)[number]
 export const counterKey = (runId: Id<'backfillRuns'>, name: string) => `${runId}:${name}`
 

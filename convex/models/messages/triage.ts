@@ -7,7 +7,7 @@ import { internalAction, internalMutation } from '../../_generated/server'
 import { matchFilter } from '../../lib/filters'
 import { toCleanMarkdown } from '../../lib/markdown'
 import { errorKind, wideEvent } from '../../lib/log'
-import { emailRef, track } from '../../lib/pipeline'
+import { counterKey, counters, emailRef, track } from '../../lib/pipeline'
 import { triagePatch } from '../../lib/triagePatch'
 import { vCategory, vFilterStatus, vRoute, vWorkflowAction } from '../../schema'
 import { loadMail } from './utils'
@@ -98,9 +98,10 @@ export const classify = internalAction({
   handler: async (ctx, { messageId }): Promise<Judgment | null> => {
     const message = await ctx.runQuery(internal.models.messages.list.getInternal, { messageId })
     if (!message) return null
-    const runId = message.backfillRunId
+    // Only first sorts wait for Resume; re-sorts and retries of sorted mail aren't part of the backfill.
+    const runId = message.route ? undefined : message.backfillRunId
     if (runId && (await ctx.runQuery(internal.models.mailboxes.gmail.backfill.isPaused, { runId }))) {
-      await ctx.runMutation(internal.models.messages.triage.parkTriage, { messageId })
+      await ctx.runMutation(internal.models.messages.triage.parkTriage, { messageId, runId })
       return null
     }
     const log = wideEvent({ job: 'triage.classify', messageId, source: message.raw ? 'domain' : 'gmail', model: JEV })
@@ -268,10 +269,13 @@ export const saveTriage = internalMutation({
 
 // Runs when a triage workflow ends. If every retry failed, the email leaves Reading for Needs action.
 export const parkTriage = internalMutation({
-  args: { messageId: v.id('messages') },
+  args: { messageId: v.id('messages'), runId: v.id('backfillRuns') },
   returns: v.null(),
-  handler: async (ctx, { messageId }) => {
+  handler: async (ctx, { messageId, runId }) => {
+    // A retried step may park the same email twice; count it once.
+    if ((await ctx.db.get('messages', messageId))?.triageParked) return null
     await ctx.db.patch('messages', messageId, { triageParked: true })
+    await counters.add(ctx, counterKey(runId, 'parked'), 1)
     return null
   },
 })

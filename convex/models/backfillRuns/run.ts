@@ -8,7 +8,7 @@ import { userAction, userMutation, userQuery } from '../../lib/functions'
 import { COUNTS, counterKey, counters, track } from '../../lib/pipeline'
 import { runBusy } from '../../lib/runBusy'
 import { vCategory, vRoute } from '../../schema'
-import { WORKER, pingWorker } from '../mailboxes/gmail/backfill'
+import { pingWorker, workerName } from '../mailboxes/gmail/backfill'
 import { startTriage } from '../messages/utils'
 import type { MutationCtx, QueryCtx } from '../../_generated/server'
 import type { Doc, Id } from '../../_generated/dataModel'
@@ -29,11 +29,12 @@ const startRun = userMutation({
       (m) => m.provider === 'gmail' && m.status === 'active' && (!mailboxId || m._id === mailboxId),
     )
     if (mailboxes.length === 0) throw new ConvexError('Connect a Gmail account first')
-    // Starting clears the previous run, so never start over one that is still moving.
-    const worker = await ctx.runQuery(components.batchWorker.lib.status, { name: WORKER })
-    if (worker?.kind === 'running')
+    // Starting clears the previous run, so never start over one that is still moving or waiting for Resume.
+    const latest = await latestRun(ctx, ctx.userId)
+    if (latest?.paused) throw new ConvexError('Resume the paused backfill or let it finish first.')
+    const worker = latest && (await ctx.runQuery(components.batchWorker.lib.status, { name: workerName(latest._id) }))
+    if (worker && worker.kind === 'running')
       throw new ConvexError('A backfill is still running. Pause it or wait for it to finish.')
-    if (worker?.kind === 'stopped') await ctx.runMutation(components.batchWorker.lib.start, { name: WORKER })
 
     // Convex allows one .paginate() per function, so this second, fixed read uses .take().
     const previous = await ctx.db
@@ -73,7 +74,8 @@ const readStatus = async (ctx: QueryCtx, run: Doc<'backfillRuns'>) => {
     counts,
     routes: await entries(ROUTE_KEYS, 'route:'),
     labels: await entries(LABEL_KEYS, 'label:'),
-    running: runBusy(counts),
+    // A paused run isn't moving even while mail waits in its queue.
+    running: !run.paused && runBusy(counts),
   }
 }
 
@@ -135,7 +137,7 @@ const pauseRun = userMutation({
   handler: async (ctx, { runId }) => {
     await getOwnedRun(ctx, runId)
     await ctx.db.patch('backfillRuns', runId, { paused: true })
-    await ctx.runMutation(components.batchWorker.lib.stop, { name: WORKER })
+    await ctx.runMutation(components.batchWorker.lib.stop, { name: workerName(runId) })
   },
 })
 
@@ -148,7 +150,9 @@ const resumeRun = userMutation({
       paused: false,
       pending: (run.pending ?? []).filter((p) => p.reason !== 'paused'),
     })
-    await ctx.runMutation(components.batchWorker.lib.start, { name: WORKER })
+    // Start wakes a stopped worker; ping creates one for queue rows from before workers were per run.
+    await ctx.runMutation(components.batchWorker.lib.start, { name: workerName(runId) })
+    await pingWorker(ctx, runId)
     await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
     for (const { mailboxId, query, limit, pageToken } of paused) {
       await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, {
@@ -196,7 +200,7 @@ const retryRun = userMutation({
     // They're no longer failures; the retry shows in the log and counters.
     await counters.subtract(ctx, counterKey(runId, 'failed'), page.length)
     await track(ctx, runId, 'retry', { count: page.length })
-    await pingWorker(ctx)
+    await pingWorker(ctx, runId)
   },
 })
 
@@ -275,6 +279,10 @@ export const resumeTriage = internalMutation({
       await ctx.db.patch('messages', m._id, { triageParked: undefined })
       await startTriage(ctx, m._id)
     }
+    // Emails parked before the counter existed were never counted, so never go below zero.
+    const key = counterKey(runId, 'parked')
+    const counted = Math.min(parked.length, await counters.count(ctx, key))
+    if (counted > 0) await counters.subtract(ctx, key, counted)
     if (parked.length === 100) await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.resumeTriage, { runId })
     return null
   },

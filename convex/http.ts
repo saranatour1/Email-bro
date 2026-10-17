@@ -2,6 +2,7 @@ import { httpRouter } from 'convex/server'
 import { internal } from './_generated/api'
 import { env, httpAction } from './_generated/server'
 import { finishConnect } from './models/mailboxes/gmail/connect'
+import { settingsError } from './lib/oauthError'
 import { parseRaw } from './lib/mail'
 import { encrypt, sha256 } from './lib/crypto'
 
@@ -16,7 +17,7 @@ http.route({
     const code = url.searchParams.get('code')
     const state = url.searchParams.get('state')
     if (!code || !state) {
-      return Response.redirect(`${env.SITE_URL}/settings?error=${url.searchParams.get('error') ?? 'denied'}`)
+      return Response.redirect(`${env.SITE_URL}/settings?error=${settingsError(url.searchParams.get('error'))}`)
     }
     try {
       return Response.redirect(await finishConnect(ctx, code, state))

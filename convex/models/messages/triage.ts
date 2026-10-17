@@ -8,6 +8,7 @@ import { matchFilter } from '../../lib/filters'
 import { toCleanMarkdown } from '../../lib/markdown'
 import { errorKind, wideEvent } from '../../lib/log'
 import { emailRef, track } from '../../lib/pipeline'
+import { triagePatch } from '../../lib/triagePatch'
 import { vCategory, vFilterStatus, vRoute, vWorkflowAction } from '../../schema'
 import { loadMail } from './utils'
 import type { ActionCtx } from '../../_generated/server'
@@ -249,13 +250,6 @@ export const saveTriage = internalMutation({
   handler: async (ctx, { messageId, action, focus, markRead, jev, ...fields }) => {
     const message = await ctx.db.get('messages', messageId)
     if (!message) return null
-    const decided = {
-      ...fields,
-      jev: { ...jev, sortedAt: Date.now() },
-      triage: undefined,
-      triageFailed: undefined,
-      ...(markRead ? { read: true } : {}),
-    }
     // Only an email's first decision counts toward its backfill run; re-sorts and retries don't.
     if (message.backfillRunId && !message.jev) {
       await track(ctx, message.backfillRunId, 'sorted', {
@@ -264,16 +258,9 @@ export const saveTriage = internalMutation({
         label: fields.category,
       })
     }
-    // The user already moved it before Jev finished: keep their status, just record the decision.
-    if (message.status !== 'inbox') {
-      await ctx.db.patch('messages', messageId, decided)
-      return null
-    }
-    const spam = !action && fields.route === 'spam'
     await ctx.db.patch('messages', messageId, {
-      ...decided,
-      status: action ? (action === 'focus' ? 'inbox' : action) : spam ? 'spam' : 'inbox',
-      focus: focus && !spam,
+      ...triagePatch(message, { ...fields, action, focus, jev: { ...jev, sortedAt: Date.now() } }),
+      ...(markRead ? { read: true } : {}),
     })
     return null
   },
@@ -295,7 +282,7 @@ export const onTriageDone = internalMutation({
   handler: async (ctx, { result, context: { messageId } }) => {
     if (result.kind !== 'failed') return null
     const message = await ctx.db.get('messages', messageId)
-    if (!message || message.route) return null
+    if (!message || message.route || message.userMoved) return null
     await ctx.db.patch('messages', messageId, {
       route: 'action',
       triageFailed: true,

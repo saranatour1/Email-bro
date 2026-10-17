@@ -101,7 +101,14 @@ export const Reader = ({
           <h2 className="text-lg font-semibold">{message.subject}</h2>
           <div className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">{message.fromName}</span>
-            {content && <span className="font-mono"> &lt;{content.from}&gt;</span>} ·{' '}
+            {content && <span className="font-mono"> &lt;{content.from}&gt;</span>}
+            {content?.replyTo && content.replyTo !== content.from && (
+              <span>
+                {' '}
+                · replies to <span className="font-mono">&lt;{content.replyTo}&gt;</span>
+              </span>
+            )}
+            {' · '}
             {new Date(message.receivedAt).toLocaleString()}
           </div>
           <JevPanel message={message} markdown={content?.markdown} />

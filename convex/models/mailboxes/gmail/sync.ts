@@ -3,13 +3,21 @@ import { internal } from '../../../_generated/api'
 import { internalAction, internalMutation } from '../../../_generated/server'
 import { userMutation } from '../../../lib/functions'
 import { API, accessToken, gmailFetch } from '../../../lib/gmail'
+import {
+  CONNECT_BACKFILL,
+  historyCursor,
+  isGoneGmailMessage,
+  mergeLabelIds,
+  shouldSyncMailbox,
+} from '../../../lib/gmailSync'
 import { ingestGmailMessage } from '../utils'
 import schema from '../../../schema'
+import type { GmailHistoryPage } from '../../../lib/gmailSync'
 
-const BACKFILL = { query: 'in:inbox newer_than:30d', limit: 2000 }
 const MAX_PER_SYNC = 100
+const MAX_HISTORY_PAGES = 20
+const NEXT_PAGE_MS = 1000
 
-// Called when the app opens; there is no background polling.
 const syncNow = userMutation({
   args: {},
   handler: async (ctx) => {
@@ -17,9 +25,9 @@ const syncNow = userMutation({
       .query('mailboxes')
       .withIndex('by_userId', (q) => q.eq('userId', ctx.userId))
       .paginate({ numItems: 50, cursor: null })
-    const stale = Date.now() - 60_000
+    const now = Date.now()
     for (const m of page) {
-      if (m.provider !== 'gmail' || m.status !== 'active' || (m.lastSyncedAt ?? 0) > stale) continue
+      if (!shouldSyncMailbox(m, now)) continue
       await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.sync.sync, { mailboxId: m._id })
     }
   },
@@ -40,7 +48,10 @@ export const sync = internalAction({
       if (!history) {
         // First sync, or the history cursor expired: restart history from now and backfill in the background.
         const { historyId } = (await gmailFetch(token, '/profile')) as { historyId: string }
-        await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, { mailboxId, ...BACKFILL })
+        await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.backfill.start, {
+          mailboxId,
+          ...CONNECT_BACKFILL,
+        })
         await ctx.runMutation(internal.models.mailboxes.gmail.sync.patch, {
           mailboxId,
           fields: { historyId, lastSyncedAt: Date.now(), status: 'active' },
@@ -53,11 +64,24 @@ export const sync = internalAction({
           externalIds: history.ids,
         }),
       )
-      for (const id of history.ids.filter((i) => !existing.has(i))) await ingestGmailMessage(ctx, token, mailboxId, id)
+      for (const id of history.ids.filter((i) => !existing.has(i))) {
+        try {
+          await ingestGmailMessage(ctx, token, mailboxId, id)
+        } catch (e) {
+          if (!isGoneGmailMessage(e)) throw e
+        }
+      }
       await ctx.runMutation(internal.models.mailboxes.gmail.sync.patch, {
         mailboxId,
-        fields: { historyId: history.historyId, lastSyncedAt: Date.now(), status: 'active' },
+        fields: {
+          ...(history.historyId ? { historyId: history.historyId } : {}),
+          lastSyncedAt: Date.now(),
+          status: 'active',
+        },
       })
+      if (history.hasMore) {
+        await ctx.scheduler.runAfter(NEXT_PAGE_MS, internal.models.mailboxes.gmail.sync.sync, { mailboxId })
+      }
     } catch (e) {
       await ctx.runMutation(internal.models.mailboxes.gmail.sync.patch, {
         mailboxId,
@@ -70,21 +94,26 @@ export const sync = internalAction({
 
 // Null when Gmail no longer has history that far back (404).
 const historySince = async (token: string, startHistoryId: string) => {
-  const params = new URLSearchParams({
-    startHistoryId,
-    historyTypes: 'messageAdded',
-    labelId: 'INBOX',
-    maxResults: String(MAX_PER_SYNC),
-  })
-  const res = await fetch(`${API}/history?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error(`Gmail history ${res.status}: ${await res.text()}`)
-  const body = (await res.json()) as {
-    historyId: string
-    history?: Array<{ messagesAdded?: Array<{ message: { id: string } }> }>
+  const pages: Array<GmailHistoryPage> = []
+  let pageToken: string | undefined
+  for (let page = 0; page < MAX_HISTORY_PAGES; page++) {
+    const params = new URLSearchParams({
+      startHistoryId,
+      historyTypes: 'messageAdded',
+      labelId: 'INBOX',
+      maxResults: String(MAX_PER_SYNC),
+    })
+    if (pageToken) params.set('pageToken', pageToken)
+    const res = await fetch(`${API}/history?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    if (res.status === 404) return null
+    if (!res.ok) throw new Error(`Gmail history ${res.status}: ${await res.text()}`)
+    const body = (await res.json()) as GmailHistoryPage
+    pages.push(body)
+    const folded = historyCursor(startHistoryId, pages)
+    if (!body.nextPageToken || folded.historyId) return folded
+    pageToken = body.nextPageToken
   }
-  const ids = (body.history ?? []).flatMap((h) => (h.messagesAdded ?? []).map((m) => m.message.id))
-  return { ids: [...new Set(ids)], historyId: body.historyId }
+  return historyCursor(startHistoryId, pages)
 }
 
 export const patch = internalMutation({
@@ -98,7 +127,10 @@ export const patch = internalMutation({
   handler: async (ctx, { mailboxId, fields }) => {
     // Undefined can't cross the function boundary, so "active" is what clears a stale error.
     const clear = fields.status === 'active' ? { lastError: undefined } : {}
-    await ctx.db.patch('mailboxes', mailboxId, { ...clear, ...fields })
+    const gmailLabelIds = fields.gmailLabelIds
+      ? mergeLabelIds((await ctx.db.get('mailboxes', mailboxId))?.gmailLabelIds, fields.gmailLabelIds)
+      : undefined
+    await ctx.db.patch('mailboxes', mailboxId, { ...clear, ...fields, ...(gmailLabelIds ? { gmailLabelIds } : {}) })
     return null
   },
 })

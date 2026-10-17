@@ -80,6 +80,8 @@ export default defineSchema({
     triageParked: v.optional(v.boolean()),
     category: v.optional(vCategory),
     focus: v.optional(v.boolean()),
+    // The user picked this status, route, or snooze. Triage keeps that placement until a re-sort.
+    userMoved: v.optional(v.boolean()),
     // Raw Jev probabilities, kept so thresholds can change without asking Jev again.
     jev: v.optional(
       v.object({

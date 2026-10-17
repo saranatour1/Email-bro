@@ -6,6 +6,7 @@ import { components, internal } from '../../_generated/api'
 import { internalMutation, internalQuery } from '../../_generated/server'
 import { userAction, userMutation, userQuery } from '../../lib/functions'
 import { COUNTS, counterKey, counters, track } from '../../lib/pipeline'
+import { runBusy } from '../../lib/runBusy'
 import { vCategory, vRoute } from '../../schema'
 import { WORKER, pingWorker } from '../mailboxes/gmail/backfill'
 import { startTriage } from '../messages/utils'
@@ -38,6 +39,7 @@ const startRun = userMutation({
     const previous = await ctx.db
       .query('backfillRuns')
       .withIndex('by_userId', (q) => q.eq('userId', ctx.userId))
+      .order('desc')
       .take(10)
     for (const run of previous)
       await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.clear, { runId: run._id })
@@ -65,12 +67,13 @@ const readStatus = async (ctx: QueryCtx, run: Doc<'backfillRuns'>) => {
   const count = (name: string) => counters.count(ctx, counterKey(run._id, name))
   const entries = async (names: Array<string>, prefix = '') =>
     Object.fromEntries(await Promise.all(names.map(async (n) => [n, await count(`${prefix}${n}`)] as const)))
+  const counts = await entries([...COUNTS])
   return {
     run,
-    counts: await entries([...COUNTS]),
+    counts,
     routes: await entries(ROUTE_KEYS, 'route:'),
     labels: await entries(LABEL_KEYS, 'label:'),
-    worker: await ctx.runQuery(components.batchWorker.lib.status, { name: WORKER }),
+    running: runBusy(counts),
   }
 }
 
@@ -205,7 +208,7 @@ export const forStudy = internalQuery({
   handler: async (ctx, { runId, userId }) => {
     const run = await ctx.db.get('backfillRuns', runId)
     if (run?.userId !== userId) return null
-    const { counts, routes, labels, worker } = await readStatus(ctx, run)
+    const { counts, routes, labels, running } = await readStatus(ctx, run)
     const { page } = await ctx.db
       .query('pipelineEvents')
       .withIndex('by_runId_and_at', (q) => q.eq('runId', runId))
@@ -224,7 +227,7 @@ export const forStudy = internalQuery({
       counts,
       routes,
       labels,
-      worker,
+      running,
       timeline,
     }
   },

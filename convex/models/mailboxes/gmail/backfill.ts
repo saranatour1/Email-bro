@@ -38,6 +38,8 @@ const runOf = (name: string) => (name === WORKER ? undefined : (name.slice(WORKE
 export const pingWorker = async (ctx: MutationCtx, runId?: Id<'backfillRuns'>) => {
   // Nothing pauses the shared worker any more, but one stopped by an older deploy would never wake on ping.
   if (!runId) await ctx.runMutation(components.batchWorker.lib.start, { name: WORKER })
+  // Ping creates a missing worker as running, so a retry re-queued during a pause must not ping.
+  else if ((await ctx.db.get('backfillRuns', runId))?.paused) return
   await ping(ctx, components.batchWorker, {
     name: workerName(runId),
     workQuery: internal.models.mailboxes.gmail.backfill.getBatch,

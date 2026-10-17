@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { usePaginatedQuery } from 'convex/react'
+import { usePaginatedQuery } from 'convex-helpers/react/cache/hooks'
 import { ChevronDown, Mail } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import type { ListView } from '~/components/app-shell'
 import type { Display } from '~/components/display-options'
+import { useStablePaginatedQuery } from '~/hooks/use-stable-paginated-query'
 import { api } from '~/lib/api'
 import { labelMeta } from '~/lib/status'
 import { cn } from '~/lib/utils'
@@ -34,7 +35,7 @@ export const MessageList = ({
   compact: boolean
   selectedId?: Id<'messages'>
 }) => {
-  const { results, status, loadMore } = usePaginatedQuery(
+  const { results, status, loadMore } = useStablePaginatedQuery(
     api.messages.list,
     { view, mailboxId: inbox },
     { initialNumItems: 50 },

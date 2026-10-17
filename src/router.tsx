@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { routerWithQueryClient } from '@tanstack/react-router-with-query'
 import { ConvexQueryClient } from '@convex-dev/react-query'
 import { ConvexAuthProvider } from '@convex-dev/auth/react'
+import { ConvexQueryCacheProvider } from 'convex-helpers/react/cache/provider'
 import { routeTree } from './routeTree.gen'
 import { api } from '~/lib/api'
 
@@ -31,7 +32,8 @@ export const getRouter = () => {
       defaultNotFoundComponent: () => <p>not found</p>,
       Wrap: ({ children }) => (
         <ConvexAuthProvider client={convexQueryClient.convexClient} api={api.auth}>
-          {children}
+          {/* Keeps query subscriptions alive after a page unmounts, so going back renders instantly. */}
+          <ConvexQueryCacheProvider>{children}</ConvexQueryCacheProvider>
         </ConvexAuthProvider>
       ),
     }),

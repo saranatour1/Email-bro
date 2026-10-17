@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useAction, useMutation } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'

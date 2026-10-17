@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute, notFound, useParams } from '@tanstack/react-router'
-import { usePaginatedQuery } from 'convex/react'
+import { usePaginatedQuery } from 'convex-helpers/react/cache/hooks'
 import type { View } from '~/components/app-shell'
 import { api } from '~/lib/api'
 import { PageHeader, isView, viewLabel } from '~/components/app-shell'

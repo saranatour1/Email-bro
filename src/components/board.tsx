@@ -13,12 +13,14 @@ import {
   ScanText,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import type { DragEvent, ReactNode } from 'react'
 import type { ListView } from '~/components/app-shell'
 import type { Display } from '~/components/display-options'
 import type { Route, Status } from '~/lib/status'
+import { useStablePaginatedQuery } from '~/hooks/use-stable-paginated-query'
 import { api } from '~/lib/api'
 import { LABELS, ROUTES, StatusIcon, labelMeta } from '~/lib/status'
 import { SNOOZE_OPTIONS } from '~/components/status-menu'
@@ -219,14 +221,16 @@ const BoardColumn = ({
   selectedId?: Id<'messages'>
   onHide: () => void
 }) => {
-  const byRoute = usePaginatedQuery(
+  const byRoute = useStablePaginatedQuery(
     api.messages.byRoute,
     column.route ? { route: column.route, mailboxId: inbox } : 'skip',
     { initialNumItems: 25 },
   )
-  const byView = usePaginatedQuery(api.messages.list, column.view ? { view: column.view, mailboxId: inbox } : 'skip', {
-    initialNumItems: 25,
-  })
+  const byView = useStablePaginatedQuery(
+    api.messages.list,
+    column.view ? { view: column.view, mailboxId: inbox } : 'skip',
+    { initialNumItems: 25 },
+  )
   const { results, status, loadMore } = column.route ? byRoute : byView
   const { over, droppable, handlers } = useColumnDrop(column)
 

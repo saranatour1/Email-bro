@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useAction, useMutation, usePaginatedQuery } from 'convex/react'
+import { useAction, useMutation } from 'convex/react'
+import { usePaginatedQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
 import { Plus, Sparkles, Trash2, Workflow } from 'lucide-react'
 import type { FunctionReturnType } from 'convex/server'
@@ -8,12 +9,11 @@ import type { Doc, Id } from '../../convex/_generated/dataModel'
 import type { Status } from '~/lib/status'
 import { api } from '~/lib/api'
 import { StatusIcon } from '~/lib/status'
-import { PageHeader } from '~/components/app-shell'
+import { Page } from '~/components/app-shell'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { ScrollArea } from '~/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
@@ -38,88 +38,77 @@ const Workflows = () => {
   const addressOf = (id?: Id<'mailboxes'>) => (id ? mailboxes.find((m) => m._id === id)?.address : 'All inboxes')
 
   return (
-    <>
-      <PageHeader>
-        <h1 className="font-mono text-sm">workflows</h1>
-        <span className="text-sm text-muted-foreground">{workflows.length}</span>
-      </PageHeader>
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
+    <Page title="workflows" count={workflows.length}>
+      <p className="text-sm text-muted-foreground">
+        Jev checks every enabled workflow as new mail arrives, in the same pass that sorts it. The first workflow it is
+        sure about wins. Mail that's already sorted isn't changed.
+      </p>
+
+      {status !== 'LoadingFirstPage' && workflows.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-12 text-center">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-linear-to-br from-fuchsia-500 via-rose-500 to-amber-400 text-white">
+            <Workflow className="size-5" />
+          </span>
+          <p className="font-medium">No workflows yet.</p>
           <p className="text-sm text-muted-foreground">
-            Jev checks every enabled workflow as new mail arrives, in the same pass that sorts it. The first workflow it
-            is sure about wins. Mail that's already sorted isn't changed.
+            Describe a kind of email in plain words and choose where it goes.
           </p>
-
-          {status !== 'LoadingFirstPage' && workflows.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-12 text-center">
-              <span className="flex size-10 items-center justify-center rounded-lg bg-linear-to-br from-fuchsia-500 via-rose-500 to-amber-400 text-white">
-                <Workflow className="size-5" />
-              </span>
-              <p className="font-medium">No workflows yet.</p>
-              <p className="text-sm text-muted-foreground">
-                Describe a kind of email in plain words and choose where it goes.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                  <tr className="[&>th]:border-b [&>th]:px-3 [&>th]:py-2 [&>th]:font-normal">
-                    <th>name</th>
-                    <th>when jev decides</th>
-                    <th>then</th>
-                    <th>inbox</th>
-                    <th>on</th>
-                    <th>
-                      <span className="sr-only">Delete</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workflows.map((w) => (
-                    <tr
-                      key={w._id}
-                      className="align-top [&>td]:border-b [&>td]:px-3 [&>td]:py-2.5 last:[&>td]:border-b-0"
-                    >
-                      <td className="font-medium">{w.name}</td>
-                      <td className="max-w-80 text-muted-foreground">{w.condition}</td>
-                      <td>
-                        <span className="flex items-center gap-1.5 whitespace-nowrap">
-                          <StatusIcon status={actionMeta(w.action).status} />
-                          {actionMeta(w.action).label}
-                        </span>
-                      </td>
-                      <td className="font-mono text-xs text-muted-foreground">{addressOf(w.mailboxId)}</td>
-                      <td>
-                        <Switch
-                          checked={w.enabled}
-                          onCheckedChange={(enabled) => void setEnabled({ workflowId: w._id, enabled })}
-                          aria-label={`${w.enabled ? 'Disable' : 'Enable'} ${w.name}`}
-                        />
-                      </td>
-                      <td>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-muted-foreground"
-                          aria-label={`Delete ${w.name}`}
-                          onClick={() => void remove({ workflowId: w._id })}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <Suggestions />
-          <NewWorkflow mailboxes={mailboxes} />
         </div>
-      </ScrollArea>
-    </>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+              <tr className="[&>th]:border-b [&>th]:px-3 [&>th]:py-2 [&>th]:font-normal">
+                <th>name</th>
+                <th>when jev decides</th>
+                <th>then</th>
+                <th>inbox</th>
+                <th>on</th>
+                <th>
+                  <span className="sr-only">Delete</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {workflows.map((w) => (
+                <tr key={w._id} className="align-top [&>td]:border-b [&>td]:px-3 [&>td]:py-2.5 last:[&>td]:border-b-0">
+                  <td className="font-medium">{w.name}</td>
+                  <td className="max-w-80 text-muted-foreground">{w.condition}</td>
+                  <td>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      <StatusIcon status={actionMeta(w.action).status} />
+                      {actionMeta(w.action).label}
+                    </span>
+                  </td>
+                  <td className="font-mono text-xs text-muted-foreground">{addressOf(w.mailboxId)}</td>
+                  <td>
+                    <Switch
+                      checked={w.enabled}
+                      onCheckedChange={(enabled) => void setEnabled({ workflowId: w._id, enabled })}
+                      aria-label={`${w.enabled ? 'Disable' : 'Enable'} ${w.name}`}
+                    />
+                  </td>
+                  <td>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-muted-foreground"
+                      aria-label={`Delete ${w.name}`}
+                      onClick={() => void remove({ workflowId: w._id })}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Suggestions />
+      <NewWorkflow mailboxes={mailboxes} />
+    </Page>
   )
 }
 

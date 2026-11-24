@@ -4,7 +4,7 @@ import { env, httpAction } from './_generated/server'
 import { finishConnect, settingsUrl } from './models/mailboxes/gmail/connect'
 import { settingsError } from './lib/oauthError'
 import { parseRaw } from './lib/mail'
-import { encrypt, sha256 } from './lib/crypto'
+import { encrypt, inboundSecretFor, sha256 } from './lib/crypto'
 
 const http = httpRouter()
 
@@ -30,22 +30,35 @@ http.route({
   }),
 })
 
-// The Cloudflare Email Worker (workers/inbound) posts each raw message here.
+// Same length and timing whatever the inputs, so a wrong secret reveals nothing about the right one.
+const sameSecret = async (a: string, b: string) =>
+  (await sha256(new TextEncoder().encode(a))) === (await sha256(new TextEncoder().encode(b)))
+
+// Each user's inbound Worker posts each raw message here with that user's own secret. The shared Worker in
+// workers/inbound may still send INBOUND_SECRET itself.
+
 http.route({
   path: '/inbound/email',
   method: 'POST',
   handler: httpAction(async (ctx, req) => {
-    if (!env.INBOUND_SECRET || req.headers.get('Authorization') !== `Bearer ${env.INBOUND_SECRET}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    if (!env.INBOUND_SECRET) return new Response('Unauthorized', { status: 401 })
+    const auth = req.headers.get('Authorization') ?? ''
     const to = req.headers.get('X-Envelope-To')
     if (!to) return new Response('Missing X-Envelope-To', { status: 400 })
     const mailbox = await ctx.runQuery(internal.models.mailboxes.list.getByAddress, { address: to })
-    if (!mailbox || mailbox.provider !== 'domain') return new Response('Unknown recipient', { status: 404 })
+    // A user's secret only opens their own mailboxes.
+    const allowed =
+      (await sameSecret(auth, `Bearer ${env.INBOUND_SECRET}`)) ||
+      (!!mailbox && (await sameSecret(auth, `Bearer ${await inboundSecretFor(mailbox.userId)}`)))
+    if (!allowed) return new Response('Unauthorized', { status: 401 })
+    // 403 makes the Worker turn the message away politely instead of failing.
+    if (!mailbox || mailbox.provider !== 'domain') {
+      return new Response("This address isn't accepting mail right now.", { status: 403 })
+    }
 
     const raw = new Uint8Array(await req.arrayBuffer())
     const mail = await parseRaw(raw)
-    const { iv, data } = await encrypt(raw)
+    const { iv, data } = await encrypt(raw, mailbox.userId)
     const fileId = await ctx.storage.store(new Blob([data]))
     const messageId = await ctx.runMutation(internal.models.messages.ingest.ingest, {
       mailboxId: mailbox._id,
@@ -56,7 +69,7 @@ http.route({
         fromName: mail.fromName,
         subject: mail.subject,
         receivedAt: mail.receivedAt,
-        raw: { fileId, iv },
+        raw: { fileId, iv, perUser: true },
       },
     })
     if (!messageId) await ctx.storage.delete(fileId)

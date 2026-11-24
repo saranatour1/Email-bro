@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { track } from '@databuddy/sdk'
 import { useAction, useMutation } from 'convex/react'
-import { usePaginatedQuery } from 'convex-helpers/react/cache/hooks'
+import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
-import { Globe, Mail } from 'lucide-react'
+import { Cloud, Globe, Mail } from 'lucide-react'
 import { api } from '~/lib/api'
 import { Page } from '~/components/app-shell'
 import { cn } from '~/lib/utils'
@@ -158,14 +158,137 @@ const Settings = () => {
             </Button>
           </CardContent>
         </Card>
+        <CloudflareAccount />
         <DomainForm />
       </div>
     </Page>
   )
 }
 
+// "in 29 days", in the browser's language.
+const inDays = (ms: number) =>
+  new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(
+    Math.max(0, Math.round((ms - Date.now()) / 86_400_000)),
+    'day',
+  )
+
+// The user's own Cloudflare account. The token is stored encrypted for this user only and deleted after 30 days.
+const CloudflareAccount = () => {
+  const status = useQuery(api.mailboxes.cloudflareStatus, {})
+  const disconnect = useMutation(api.mailboxes.disconnectCloudflare)
+  const [replacing, setReplacing] = useState(false)
+
+  return (
+    <Card className="gap-4 md:col-span-2">
+      <CardHeader>
+        <CardTitle className="text-sm">Cloudflare account</CardTitle>
+        <CardDescription>
+          Sends and receives mail on your own domain through your Cloudflare account. Your account ID and API token are
+          encrypted with a key only your data uses, and deleted after 30 days; enter a new token then to keep sending.
+          Receiving keeps working. The token needs Email Sending, Email Routing Rules, Workers Scripts edit and Zone
+          read access.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {status && !replacing ? (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="flex items-center gap-2">
+              <Cloud className="size-4 text-muted-foreground" />
+              <span className="font-mono">{status.domain}</span>
+            </span>
+            <span className="text-muted-foreground">Token deleted {inDays(status.expiresAt)}</span>
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setReplacing(true)}>
+                Enter a new token
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => void disconnect({})}>
+                Disconnect
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <CloudflareForm defaultDomain={status?.domain} onDone={() => setReplacing(false)} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+const CloudflareForm = ({ defaultDomain, onDone }: { defaultDomain?: string; onDone: () => void }) => {
+  const connect = useAction(api.mailboxes.connectCloudflare)
+  const [accountId, setAccountId] = useState('')
+  const [apiToken, setApiToken] = useState('')
+  const [domain, setDomain] = useState(defaultDomain ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <form
+      className="grid gap-3 md:grid-cols-3"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        setError(null)
+        setSaving(true)
+        try {
+          await connect({ accountId, apiToken, domain })
+          setApiToken('')
+          onDone()
+        } catch (err) {
+          setError(err instanceof ConvexError ? String(err.data) : 'Could not connect that account')
+        } finally {
+          setSaving(false)
+        }
+      }}
+    >
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="cf-account">Account ID</Label>
+        <Input
+          id="cf-account"
+          required
+          autoComplete="off"
+          className="font-mono"
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="cf-token">API token</Label>
+        <Input
+          id="cf-token"
+          type="password"
+          required
+          autoComplete="off"
+          className="font-mono"
+          value={apiToken}
+          onChange={(e) => setApiToken(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="cf-domain">Domain</Label>
+        <Input
+          id="cf-domain"
+          required
+          placeholder="yourdomain.com"
+          className="font-mono"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+        />
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive md:col-span-3">
+          {error}
+        </p>
+      )}
+      <Button type="submit" className="self-start">
+        {saving ? 'Checking…' : 'Connect'}
+      </Button>
+    </form>
+  )
+}
+
 const DomainForm = () => {
-  const add = useMutation(api.mailboxes.addDomainMailbox)
+  const addResend = useMutation(api.mailboxes.addDomainMailbox)
+  const addCloudflare = useAction(api.mailboxes.addCloudflareMailbox)
   const [address, setAddress] = useState('')
   const [sendVia, setSendVia] = useState<'cloudflare' | 'resend'>('cloudflare')
   const [error, setError] = useState<string | null>(null)
@@ -174,8 +297,8 @@ const DomainForm = () => {
       <CardHeader>
         <CardTitle className="text-sm">Own domain</CardTitle>
         <CardDescription>
-          Receives through a Cloudflare Email Worker (see <code>workers/inbound</code>), replies through Cloudflare
-          Email Sending or Resend.
+          With your Cloudflare account, Email Bro sets up the routing rule and Worker for the address. With Resend,
+          replies go out through Resend and mail arrives through the shared Worker in <code>workers/inbound</code>.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -185,7 +308,8 @@ const DomainForm = () => {
             e.preventDefault()
             setError(null)
             try {
-              await add({ address, sendVia })
+              if (sendVia === 'cloudflare') await addCloudflare({ address })
+              else await addResend({ address })
               setAddress('')
             } catch (err) {
               setError(err instanceof ConvexError ? String(err.data) : 'Could not add that address')
@@ -204,13 +328,13 @@ const DomainForm = () => {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="send-via">Send replies with</Label>
+            <Label htmlFor="send-via">Send and receive with</Label>
             <Select value={sendVia} onValueChange={(value) => setSendVia(value as 'cloudflare' | 'resend')}>
               <SelectTrigger id="send-via" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cloudflare">Cloudflare Email Sending</SelectItem>
+                <SelectItem value="cloudflare">Your Cloudflare account</SelectItem>
                 <SelectItem value="resend">Resend</SelectItem>
               </SelectContent>
             </Select>

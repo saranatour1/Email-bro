@@ -60,21 +60,16 @@ This asks you to log in, creates a development deployment and writes its URL to 
 
 ### 3. Set the backend settings
 
-Create the sign-in keys:
+Set each value on your deployment. Use the `NAME=value` form, so values that start with `-` still work:
 
 ```bash
-node -e "const {generateKeyPairSync}=require('crypto');const k=generateKeyPairSync('rsa',{modulusLength:2048});console.log('AUTH_PRIVATE_KEY='+k.privateKey.export({type:'pkcs8',format:'pem'}).trim().replace(/\n/g,' '));console.log('AUTH_JWKS='+JSON.stringify({keys:[{use:'sig',alg:'RS256',...k.publicKey.export({format:'jwk'})}]}))"
+npx convex env set "SITE_URL=http://localhost:3000"
 ```
 
-Then set each value on your deployment. Use the `NAME=value` form, so values that start with `-` still work:
-
-```bash
-npx convex env set "AUTH_PRIVATE_KEY=<value from above>"
-```
+Sign-in needs no keys of its own: Convex Auth signs its tokens with the deployment's key.
 
 | Setting                                                               | Required            | What it is                                                            |
 | --------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------- |
-| `AUTH_PRIVATE_KEY`, `AUTH_JWKS`                                       | yes                 | The sign-in keys from the command above                               |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                            | yes                 | Your Google OAuth client, used for both sign-in and connecting Gmail  |
 | `SITE_URL`                                                            | yes                 | Where the app runs, e.g. `http://localhost:3000`                      |
 | `ID_HASH_KEY`                                                         | yes                 | Any long random string, e.g. from `openssl rand -base64 32`           |

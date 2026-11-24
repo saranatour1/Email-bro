@@ -3,21 +3,30 @@ import { vGoogleProfile } from '@convex-dev/auth/methods/google/server'
 import { v } from 'convex/values'
 import { internalMutation, query } from '../../_generated/server'
 
-const vProvider = v.object({ name: v.literal('google'), accountId: v.string(), profile: vGoogleProfile })
+const vMethod = v.object({ name: v.literal('google'), profile: vGoogleProfile })
 
 export const createUser = internalMutation({
-  args: { provider: vProvider },
+  args: { method: vMethod },
   returns: v.id('users'),
-  handler: async (ctx, { provider: { profile } }) => {
+  handler: async (ctx, { method: { profile } }) => {
+    // shortcut: Convex Auth 2.1 didn't carry over the Google account links from 2.0 beta, so a user from before the
+    // upgrade is found again by their Google-verified email. Remove once every existing user has signed in once.
+    if (profile.emailVerified && profile.email) {
+      const existing = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', profile.email))
+        .first()
+      if (existing) return existing._id
+    }
     return await ctx.db.insert('users', { name: profile.name, email: profile.email, image: profile.picture })
   },
 })
 
 // Keep name/avatar fresh on every sign-in.
 export const onSignIn = internalMutation({
-  args: { provider: vProvider, userId: v.id('users') },
+  args: { method: vMethod, userId: v.id('users') },
   returns: v.null(),
-  handler: async (ctx, { provider: { profile }, userId }) => {
+  handler: async (ctx, { method: { profile }, userId }) => {
     await ctx.db.patch('users', userId, { name: profile.name, email: profile.email, image: profile.picture })
     return null
   },

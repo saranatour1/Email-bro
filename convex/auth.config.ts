@@ -1,14 +1,5 @@
-import { env } from './_generated/server'
+import { convexAuthProvider } from '@convex-dev/auth/server'
 import type { AuthConfig } from 'convex/server'
 
-export default {
-  providers: [
-    {
-      type: 'customJwt',
-      applicationID: 'convex',
-      issuer: env.CONVEX_SITE_URL,
-      jwks: `${env.CONVEX_SITE_URL}/auth/.well-known/jwks.json`,
-      algorithm: 'RS256',
-    },
-  ],
-} satisfies AuthConfig
+// Convex Auth signs access tokens with the deployment's own key, so there are no signing keys to manage.
+export default { providers: [convexAuthProvider()] } satisfies AuthConfig

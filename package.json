@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@convex-dev/ai-sdk-provider": "^0.3.0",
-    "@convex-dev/auth": "2.0.0-beta.0",
+    "@convex-dev/auth": "2.1.0",
     "@convex-dev/batch-worker": "^0.3.6",
     "@convex-dev/react-query": "^0.1.0",
     "@convex-dev/sharded-counter": "^0.2.3",
@@ -33,7 +33,7 @@
     "ai": "^7.0.143",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
-    "convex": "^1.47.0",
+    "convex": "^1.51.0",
     "convex-helpers": "^0.1.128",
     "evlog": "2.32.0",
     "lucide-react": "^1.58.0",

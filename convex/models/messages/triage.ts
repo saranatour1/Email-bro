@@ -163,8 +163,9 @@ const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment
   )
 
   // convexGateway mints the deployment-scoped token itself; no provider keys.
+  // zdr: only endpoints that keep no copy of the request, since the email body is in it.
   const { answers } = await decide({
-    model: convexGateway.evaluationModel(JEV),
+    model: convexGateway.evaluationModel(JEV, { zdr: true }),
     state: {
       recipient: mailbox?.address,
       goals: goals.map((g) => (g.details ? `${g.title}: ${g.details}` : g.title)),

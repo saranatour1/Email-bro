@@ -114,7 +114,8 @@ const study = userAction({
     const data = await ctx.runQuery(internal.models.backfillRuns.run.forStudy, { runId, userId: ctx.userId })
     if (!data) throw new ConvexError('Run not found')
     const { text } = await generateText({
-      model: convexGateway(STUDY_MODEL),
+      // zdr: no email content here, but every model call stays on endpoints that store nothing.
+      model: convexGateway(STUDY_MODEL, { zdr: true }),
       maxOutputTokens: 600,
       system:
         'You review an email-sorting pipeline: Gmail ids are queued, a batch worker claims 10 at a time, emails are fetched, then Jev (a decision model) routes each one to Needs action, Goal, Info or Spam and labels it. You get counters and a timeline, never email content. In under 200 words of Markdown: how fast it ran and where it slowed, what the routing mix says, any failures and their likely cause, and 2–3 concrete tuning or workflow suggestions.',

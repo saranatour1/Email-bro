@@ -1,7 +1,7 @@
 import { httpRouter } from 'convex/server'
 import { internal } from './_generated/api'
 import { env, httpAction } from './_generated/server'
-import { finishConnect } from './models/mailboxes/gmail/connect'
+import { finishConnect, settingsUrl } from './models/mailboxes/gmail/connect'
 import { settingsError } from './lib/oauthError'
 import { parseRaw } from './lib/mail'
 import { encrypt, sha256 } from './lib/crypto'
@@ -17,7 +17,7 @@ http.route({
     const code = url.searchParams.get('code')
     const state = url.searchParams.get('state')
     if (!code || !state) {
-      return Response.redirect(`${env.SITE_URL}/settings?error=${settingsError(url.searchParams.get('error'))}`)
+      return Response.redirect(settingsUrl(`error=${settingsError(url.searchParams.get('error'))}`))
     }
     try {
       return Response.redirect(await finishConnect(ctx, code, state))
@@ -25,7 +25,7 @@ http.route({
       // Land back on the app with a readable reason instead of a raw error page.
       console.error('Gmail connect failed', e)
       const reason = String(e).includes('SERVICE_DISABLED') ? 'gmail_api_disabled' : 'connect_failed'
-      return Response.redirect(`${env.SITE_URL}/settings?error=${reason}`)
+      return Response.redirect(settingsUrl(`error=${reason}`))
     }
   }),
 })

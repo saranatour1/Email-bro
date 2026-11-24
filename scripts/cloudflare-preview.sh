@@ -7,7 +7,8 @@
 #   Build command:                        bash scripts/cloudflare-preview.sh build
 #   Deploy command (production):          npx wrangler deploy
 #   Non-production branch deploy command: bash scripts/cloudflare-preview.sh deploy
-# Build variables: CONVEX_DEPLOY_KEY (a Convex preview deploy key) and CONVEX_PROD_DEPLOY_KEY (a production one).
+# Build variable: CONVEX_DEPLOY_KEY, set per environment in Cloudflare: a Convex production deploy key for the
+# production branch, a preview deploy key for the rest.
 set -euo pipefail
 
 branch="${WORKERS_CI_BRANCH:-$(git branch --show-current)}"
@@ -22,11 +23,7 @@ fi
 case "${1:-}" in
   build)
     if [ "$branch" = "${PRODUCTION_BRANCH:-master}" ]; then
-      if [ -z "${CONVEX_PROD_DEPLOY_KEY:-}" ]; then
-        echo "Set CONVEX_PROD_DEPLOY_KEY (a Convex production deploy key) in the Cloudflare build variables." >&2
-        exit 1
-      fi
-      CONVEX_DEPLOY_KEY="$CONVEX_PROD_DEPLOY_KEY" pnpm exec convex deploy --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
+      pnpm exec convex deploy --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
     else
       pnpm exec convex deploy --preview-name "$name" --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
     fi

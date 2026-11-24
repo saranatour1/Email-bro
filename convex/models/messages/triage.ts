@@ -4,12 +4,13 @@ import { experimental_decide as decide } from 'ai'
 import { convexGateway } from '@convex-dev/ai-sdk-provider'
 import { components, internal } from '../../_generated/api'
 import { internalAction, internalMutation } from '../../_generated/server'
-import { matchFilter } from '../../lib/filters'
+import { hit, matchFilter } from '../../lib/filters'
 import { toCleanMarkdown } from '../../lib/markdown'
 import { errorKind, wideEvent } from '../../lib/log'
 import { counterKey, counters, emailRef, track } from '../../lib/pipeline'
 import { triagePatch } from '../../lib/triagePatch'
 import { vCategory, vFilterStatus, vRoute, vWorkflowAction } from '../../schema'
+import { MAX_PER_MESSAGE } from '../labels/manage'
 import { loadMail, startTriage } from './utils'
 import type { ActionCtx } from '../../_generated/server'
 import type { Infer } from 'convex/values'
@@ -57,6 +58,8 @@ const vJudgment = v.object({
     v.null(),
     v.object({ filterId: v.id('filters'), status: v.optional(vFilterStatus), markRead: v.optional(v.boolean()) }),
   ),
+  // The user's labels that fit: by sender, or because Jev said yes to the label's description.
+  labelIds: v.array(v.id('labels')),
   // `filter` when a filter decided route and label on its own and Jev wasn't asked.
   model: v.string(),
 })
@@ -73,7 +76,7 @@ export const triageMessage = defineWorkflow(components.workflow, {
 }).handler(async (step, { messageId }): Promise<void> => {
   const judgment = await step.runAction(internal.models.messages.triage.classify, { messageId })
   if (!judgment) return
-  const { route, goalId, category, matched, filter, ...signals } = judgment
+  const { route, goalId, category, labelIds, matched, filter, ...signals } = judgment
   // Policy lives here, on top of raw probabilities, so it can change without asking Jev again.
   // A filter's status beats a Jev workflow's action; both beat the route's default.
   const action = filter?.status ?? matched?.action
@@ -83,6 +86,7 @@ export const triageMessage = defineWorkflow(components.workflow, {
     route,
     goalId,
     category,
+    labelIds,
     focus,
     action,
     markRead: filter?.markRead,
@@ -128,7 +132,7 @@ export const classify = internalAction({
 })
 
 const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment> => {
-  const [mailbox, mail, goals, workflows, filters] = await Promise.all([
+  const [mailbox, mail, goals, workflows, filters, labels] = await Promise.all([
     ctx.runQuery(internal.models.mailboxes.list.get, { mailboxId: message.mailboxId }),
     loadMail(ctx, message),
     ctx.runQuery(internal.models.goals.manage.forTriage, { userId: message.userId }),
@@ -137,28 +141,44 @@ const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment
       mailboxId: message.mailboxId,
     }),
     ctx.runQuery(internal.models.filters.manage.forTriage, { userId: message.userId, mailboxId: message.mailboxId }),
+    ctx.runQuery(internal.models.labels.manage.forTriage, { userId: message.userId }),
   ])
-  const hit = matchFilter(filters, mail)
-  const filter = hit ? { filterId: hit._id, status: hit.status, markRead: hit.markRead } : null
+  const matched = matchFilter(filters, mail)
+  const filter = matched ? { filterId: matched._id, status: matched.status, markRead: matched.markRead } : null
+  const bySender = labels
+    .filter((l) => l.senders && hit(l.senders, `${mail.fromName} <${mail.from}>`))
+    .map((l) => l._id)
   // A filter that sets both the column and the label decides on its own: no Jev call.
-  if (hit?.route && hit.label) {
+  if (matched?.route && matched.label) {
     return {
-      route: hit.route,
-      routeProbabilities: { [hit.route]: 1 },
+      route: matched.route,
+      routeProbabilities: { [matched.route]: 1 },
       urgency: 0,
-      category: hit.label,
+      category: matched.label,
       categoryConfidence: 1,
+      labelIds: bySender,
       matched: null,
       filter,
       model: 'filter',
     }
   }
   const routes = goals.length ? ROUTES : { action: ROUTES.action, info: ROUTES.info, spam: ROUTES.spam }
-  // Asked in the same call, keyed by workflow id.
+  // Asked in the same call, keyed by workflow or label id.
   const custom = Object.fromEntries(
     workflows.map((w) => [
       w._id,
       { type: 'boolean' as const, instructions: `\`recipient\` received \`email\`. ${w.condition}` },
+    ]),
+  )
+  // Sender matches are already in; only the rest is worth a question.
+  const described = labels.filter((l) => l.description && !bySender.includes(l._id))
+  const labelQuestions = Object.fromEntries(
+    described.map((l) => [
+      l._id,
+      {
+        type: 'boolean' as const,
+        instructions: `\`recipient\` labels mail that fits this description: ${l.description} Does \`email\` fit it?`,
+      },
     ]),
   )
 
@@ -192,6 +212,7 @@ const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment
           }
         : {}),
       ...custom,
+      ...labelQuestions,
     },
   })
 
@@ -205,15 +226,16 @@ const judge = async (ctx: ActionCtx, message: Doc<'messages'>): Promise<Judgment
   const goalAnswer = answers.goal
   const goalChoice: string | undefined = goalAnswer?.type === 'choice' ? goalAnswer.choice : undefined
   // A filter that sets only one of route or label overrides just that part of Jev's answer.
-  const finalRoute = hit?.route ?? route
+  const finalRoute = matched?.route ?? route
   return {
     route: finalRoute,
-    routeProbabilities: hit?.route ? { [finalRoute]: 1 } : (answers.route.probabilities ?? { [route]: 1 }),
+    routeProbabilities: matched?.route ? { [finalRoute]: 1 } : (answers.route.probabilities ?? { [route]: 1 }),
     goalId: finalRoute === 'goal' ? goals.find((g) => g._id === goalChoice)?._id : undefined,
     urgency: answers.urgency.score,
-    category: hit?.label ?? category,
+    category: matched?.label ?? category,
     // The SDK returns the distribution, not a confidence score: keep the winner's share.
-    categoryConfidence: hit?.label ? 1 : (answers.category.probabilities?.[category] ?? 0),
+    categoryConfidence: matched?.label ? 1 : (answers.category.probabilities?.[category] ?? 0),
+    labelIds: [...bySender, ...described.filter((l) => isYes(answers, l._id)).map((l) => l._id)],
     matched: matchWorkflow(workflows, answers),
     filter,
     model: JEV,
@@ -224,9 +246,13 @@ const matchWorkflow = (
   workflows: Array<{ _id: Id<'jevWorkflows'>; action: Infer<typeof vWorkflowAction> }>,
   answers: Partial<Record<string, { type: string; probability?: number }>>,
 ) => {
-  const hit = workflows.find((w) => (answers[w._id]?.probability ?? 0) >= MATCH_THRESHOLD)
-  return hit ? { workflowId: hit._id, action: hit.action } : null
+  const found = workflows.find((w) => isYes(answers, w._id))
+  return found ? { workflowId: found._id, action: found.action } : null
 }
+
+// A yes-or-no question keyed by id (a workflow or a label) counts when Jev is sure enough.
+const isYes = (answers: Partial<Record<string, { type: string; probability?: number }>>, id: string) =>
+  (answers[id]?.probability ?? 0) >= MATCH_THRESHOLD
 
 export const saveTriage = internalMutation({
   args: {
@@ -234,6 +260,7 @@ export const saveTriage = internalMutation({
     route: vRoute,
     goalId: v.optional(v.id('goals')),
     category: vCategory,
+    labelIds: v.array(v.id('labels')),
     focus: v.boolean(),
     action: v.optional(vWorkflowAction),
     markRead: v.optional(v.boolean()),
@@ -247,7 +274,7 @@ export const saveTriage = internalMutation({
     }),
   },
   returns: v.null(),
-  handler: async (ctx, { messageId, action, focus, markRead, jev, ...fields }) => {
+  handler: async (ctx, { messageId, action, focus, markRead, labelIds, jev, ...fields }) => {
     const message = await ctx.db.get('messages', messageId)
     if (!message) return null
     if (message.backfillRunId && firstSort(message)) {
@@ -260,6 +287,8 @@ export const saveTriage = internalMutation({
     await ctx.db.patch('messages', messageId, {
       ...triagePatch(message, { ...fields, action, focus, jev: { ...jev, sortedAt: Date.now() } }),
       ...(markRead ? { read: true } : {}),
+      // Labels only add up: a re-sort never takes off one the user put on by hand.
+      labelIds: [...new Set([...(message.labelIds ?? []), ...labelIds])].slice(0, MAX_PER_MESSAGE),
     })
     return null
   },

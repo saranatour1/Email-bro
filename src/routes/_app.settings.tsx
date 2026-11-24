@@ -75,7 +75,7 @@ const Settings = () => {
                 <th>provider</th>
                 <th>status</th>
                 <th>last synced</th>
-                <th title="Add Jev's Bro/* labels in Gmail">label in gmail</th>
+                <th title="Add your labels in Gmail under the same names">label in gmail</th>
                 <th title="Move filed mail out of Gmail's inbox">archive in gmail</th>
               </tr>
             </thead>
@@ -144,8 +144,8 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="text-sm">Gmail</CardTitle>
             <CardDescription>
-              Sorted by Jev and mirrored back as Bro/* labels; filed mail is archived in Gmail, never deleted. Turn
-              either off per mailbox in the table above.
+              Sorted by Jev, with your labels added in Gmail under the same names; filed mail is archived in Gmail,
+              never deleted. Turn either off per mailbox in the table above.
             </CardDescription>
           </CardHeader>
           <CardContent className="mt-auto">

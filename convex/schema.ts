@@ -14,6 +14,20 @@ export const vRoute = literals('action', 'goal', 'info', 'spam')
 export const vFilterStatus = literals('in_progress', 'done', 'cancelled')
 
 // Where a matching Jev workflow moves an email. `focus` = Inbox, shown in Focus.
+// A label's color on its dot. Names, not classes, so the palette can change without a migration.
+export const vLabelColor = literals(
+  'gray',
+  'red',
+  'orange',
+  'amber',
+  'green',
+  'teal',
+  'blue',
+  'indigo',
+  'purple',
+  'pink',
+)
+
 export const vWorkflowAction = literals('focus', 'in_progress', 'done', 'cancelled', 'spam')
 
 export default defineSchema({
@@ -83,6 +97,8 @@ export default defineSchema({
     // Its backfill run was paused before Jev read it; Resume sorts it.
     triageParked: v.optional(v.boolean()),
     category: v.optional(vCategory),
+    // The user's own labels: added by sender, by Jev from a label's description, or by hand. Capped at MAX_PER_MESSAGE.
+    labelIds: v.optional(v.array(v.id('labels'))),
     focus: v.optional(v.boolean()),
     // The user picked this status, route, or snooze. Triage keeps that placement until a re-sort.
     userMoved: v.optional(v.boolean()),
@@ -174,6 +190,17 @@ export default defineSchema({
     label: v.optional(vCategory),
     at: v.number(),
   }).index('by_runId_and_at', ['runId', 'at']),
+
+  // The user's own labels. Each can match senders, a plain-words description Jev checks, or be added by hand.
+  labels: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    color: vLabelColor,
+    // People or domains, `|` between them, matched like a filter's From: "jane@acme.com | acme.com".
+    senders: v.optional(v.string()),
+    // Asked of Jev as a yes-or-no question about each new email, like a workflow condition.
+    description: v.optional(v.string()),
+  }).index('by_userId', ['userId']),
 
   // Gmail-style rules: exact matches on sender and subject, checked before Jev. `|` separates alternatives.
   filters: defineTable({

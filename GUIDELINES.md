@@ -60,6 +60,7 @@ convex/
     mailboxes.ts         # → api.mailboxes.*
     users.ts             # → api.users.*
     workflows.ts         # → api.workflows.* (custom Jev workflows)
+    labels.ts            # → api.labels.* (the user's own labels)
     auth.ts              # → api.auth.* (Convex Auth session + Google sign-in)
   models/
     messages/            # one folder per table
@@ -81,6 +82,8 @@ convex/
         writeBack.ts     # applyTriage, syncInbox: mirror labels and status into Gmail
     jevWorkflows/
       manage.ts          # list, create, setEnabled, remove (public); forTriage
+    labels/
+      manage.ts          # list, create, update, remove, setOnMessage (public); forTriage, names
     users/
       auth.ts            # me (public); createUser, onSignIn (Convex Auth callbacks)
   lib/                   # helpers reused across tables
@@ -240,6 +243,7 @@ Follow the official docs ([overview](https://tanstack.com/start/latest/docs/fram
 | `_app.mail.$view.$messageId.tsx` | `/mail/$view/$messageId` | Reader in the parent's `<Outlet />`                            |
 | `_app.settings.tsx`              | `/settings`              | Mailboxes                                                      |
 | `_app.workflows.tsx`             | `/workflows`             | Custom Jev workflows                                           |
+| `_app.labels.tsx`                | `/labels`                | Your own labels: by sender, by description, or by hand         |
 
 ## Design system: Linear × Convex dashboard
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { track } from '@databuddy/sdk'
 import { useMutation } from 'convex/react'
 import { useQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
@@ -125,7 +126,18 @@ const LabelForm = ({ editing, onDone }: { editing: Doc<'labels'> | null; onDone:
             try {
               const fields = { name, color, senders, description }
               if (editing) await update({ labelId: editing._id, ...fields })
-              else await create(fields)
+              else {
+                await create(fields)
+                // How the label applies, never its name or senders.
+                const rule = senders.trim()
+                  ? description.trim()
+                    ? 'both'
+                    : 'sender'
+                  : description.trim()
+                    ? 'description'
+                    : 'manual'
+                track('label_created', { rule })
+              }
               setName('')
               setSenders('')
               setDescription('')

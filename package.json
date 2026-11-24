@@ -20,6 +20,7 @@
     "@convex-dev/react-query": "^0.1.0",
     "@convex-dev/sharded-counter": "^0.2.3",
     "@convex-dev/workflow": "^0.4.10",
+    "@databuddy/sdk": "3.5.1",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@fontsource-variable/sora": "^5.3.0",

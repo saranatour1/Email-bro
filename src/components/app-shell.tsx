@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { useAuthActions } from '@convex-dev/auth/react'
+import { identify, reset } from '@databuddy/sdk'
 import {
   Check,
   ChevronDown,
@@ -401,6 +402,11 @@ const CollapseButton = () => {
 const UserMenu = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
   const me = useQuery(api.users.me)
   const { signOut } = useAuthActions()
+  // Analytics know the user by id only: no email or name leaves the app.
+  const userId = me?._id
+  useEffect(() => {
+    if (userId) identify(userId)
+  }, [userId])
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -422,7 +428,12 @@ const UserMenu = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
             <Settings /> Mailboxes
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void signOut()}>
+        <DropdownMenuItem
+          onSelect={() => {
+            reset()
+            void signOut()
+          }}
+        >
           <LogOut /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>

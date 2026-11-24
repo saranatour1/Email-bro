@@ -38,7 +38,7 @@ type Env = {
   readonly INBOUND_SECRET: string | undefined;
   readonly MAIL_ENCRYPTION_KEY: string | undefined;
   readonly RESEND_API_KEY: string | undefined;
-  readonly SITE_URL: string;
+  readonly SITE_URL: string | undefined;
 };
 
 /**

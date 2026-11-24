@@ -23,7 +23,9 @@ fi
 case "${1:-}" in
   build)
     if [ "$branch" = "${PRODUCTION_BRANCH:-master}" ]; then
-      pnpm exec convex deploy --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
+      # Convex treats every Cloudflare branch but "main" as a preview and refuses a production key there. This branch
+      # check already makes sure it's production.
+      pnpm exec convex deploy --check-build-environment disable --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
     else
       pnpm exec convex deploy --preview-name "$name" --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
     fi

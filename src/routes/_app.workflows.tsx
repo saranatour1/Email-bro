@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { track } from '@databuddy/sdk'
 import { useAction, useMutation } from 'convex/react'
 import { usePaginatedQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
@@ -136,6 +137,7 @@ const Suggestions = () => {
   const add = async (s: Suggestion) => {
     try {
       await create({ name: s.name, condition: s.condition, action: s.action })
+      track('workflow_created', { source: 'suggestion' })
       setSuggestions((all) => all?.filter((x) => x !== s) ?? null)
     } catch (err) {
       setError(err instanceof ConvexError ? String(err.data) : 'Could not save the workflow')
@@ -216,6 +218,7 @@ const NewWorkflow = ({ mailboxes }: { mailboxes: Array<Doc<'mailboxes'>> }) => {
                 action,
                 mailboxId: inbox === ALL ? undefined : (inbox as Id<'mailboxes'>),
               })
+              track('workflow_created', { source: 'manual' })
               setName('')
               setCondition('')
             } catch (err) {

@@ -1,7 +1,11 @@
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import * as React from 'react'
+import { DatabuddyProvider } from '@databuddy/sdk/react'
 import type { QueryClient } from '@tanstack/react-query'
 import appCss from '~/styles/app.css?url'
+
+// Public client id for Databuddy analytics; without it, no tracker loads (e.g. local dev).
+const DATABUDDY_CLIENT_ID = import.meta.env.VITE_DATABUDDY_CLIENT_ID as string | undefined
 
 const RootComponent = () => {
   return (
@@ -26,6 +30,16 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
       </head>
       <body>
         {children}
+        {DATABUDDY_CLIENT_ID && (
+          <DatabuddyProvider
+            clientId={DATABUDDY_CLIENT_ID}
+            autocapture={{ webVitals: true, errors: true }}
+            // Replay keeps its defaults: page text and typed input are masked, so no email content is recorded.
+            replay
+            // Paths are recorded without the message id: /mail/focus/* instead of /mail/focus/<id>.
+            maskPaths={['/mail/*/*']}
+          />
+        )}
         <Scripts />
       </body>
     </html>

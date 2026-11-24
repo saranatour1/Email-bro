@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { track } from '@databuddy/sdk'
 import { useAction, useMutation } from 'convex/react'
 import { usePaginatedQuery } from 'convex-helpers/react/cache/hooks'
 import { ConvexError } from 'convex/values'
@@ -23,6 +24,9 @@ const ERRORS: Partial<Record<string, string>> = {
 
 const Settings = () => {
   const { connected, error } = Route.useSearch()
+  useEffect(() => {
+    if (connected) track('gmail_connected')
+  }, [connected])
   const { results: mailboxes, status } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
   const startConnect = useAction(api.mailboxes.startGmailConnect)
   const setGmailOptions = useMutation(api.mailboxes.setGmailOptions)

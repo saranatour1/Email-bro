@@ -30,7 +30,7 @@ You can also:
 
 ## Privacy
 
-Email Bro stores as little as possible. For Gmail it keeps only the sender's name, the subject and the message ids. It fetches the email itself from Gmail when you open it. Mail sent to your own domain has to be stored, so it is kept encrypted.
+Email Bro stores as little as possible. For Gmail it keeps only the sender's name, the subject and the message ids. It fetches the email itself from Gmail when you open it. Mail sent to your own domain has to be stored, so it is kept encrypted with a key unique to you. Your Cloudflare account ID and API token are encrypted the same way and deleted after 30 days.
 
 ## Built with
 
@@ -68,14 +68,14 @@ npx convex env set "SITE_URL=http://localhost:3000"
 
 Sign-in needs no keys of its own: Convex Auth signs its tokens with the deployment's key.
 
-| Setting                                                               | Required            | What it is                                                            |
-| --------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------- |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                            | yes                 | Your Google OAuth client, used for both sign-in and connecting Gmail  |
-| `SITE_URL`                                                            | yes                 | Where the app runs, e.g. `http://localhost:3000`                      |
-| `ID_HASH_KEY`                                                         | yes                 | Any long random string, e.g. from `openssl rand -base64 32`           |
-| `MAIL_ENCRYPTION_KEY`                                                 | for your own domain | A 32-byte key: `openssl rand -base64 32 \| tr '+/' '-_' \| tr -d '='` |
-| `INBOUND_SECRET`                                                      | for your own domain | A shared secret for the email worker                                  |
-| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_EMAIL_TOKEN` or `RESEND_API_KEY` | for your own domain | Sending mail from your domain                                         |
+| Setting                                    | Required            | What it is                                                             |
+| ------------------------------------------ | ------------------- | ---------------------------------------------------------------------- |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | yes                 | Your Google OAuth client, used for both sign-in and connecting Gmail   |
+| `SITE_URL`                                 | yes                 | Where the app runs, e.g. `http://localhost:3000`                       |
+| `ID_HASH_KEY`                              | yes                 | Any long random string, e.g. from `openssl rand -base64 32`            |
+| `MAIL_ENCRYPTION_KEY`                      | for your own domain | A 32-byte key: `openssl rand -base64 32 \| tr '+/' '-_' \| tr -d '='`  |
+| `INBOUND_SECRET`                           | for your own domain | Any long random string. Each user's Worker gets its own secret from it |
+| `RESEND_API_KEY`                           | for Resend          | Only for domain addresses that reply through Resend                    |
 
 ### 4. Point Google back at your app
 
@@ -94,7 +94,9 @@ Open http://localhost:3000, sign in with Google, and connect your Gmail accounts
 
 ### Optional: an address on your own domain
 
-`workers/inbound` is a small Cloudflare Email Worker that forwards mail sent to your domain into Email Bro. Set its `CONVEX_SITE_URL` to your deployment's site URL and its secret to the same `INBOUND_SECRET`, then deploy it with Wrangler.
+Each user connects their own Cloudflare account under **Mailboxes → Cloudflare account**: the account ID, an API token (Email Sending, Email Routing Rules, Workers Scripts edit and Zone read) and the domain, which needs Email Routing turned on. The token is encrypted for that user only and deleted after 30 days; enter a new one then to keep sending. Adding an address uploads an inbound Worker to the user's account, with a secret only their mailboxes accept, and creates the routing rule. Sending goes through [`@sarant/cloudflare-email-component`](https://www.npmjs.com/package/@sarant/cloudflare-email-component), which keeps an encrypted copy of each sent email for 7 days.
+
+For Resend, `workers/inbound` is a small Cloudflare Email Worker you deploy yourself. Set its `CONVEX_SITE_URL` to your deployment's site URL and its secret to the same `INBOUND_SECRET`, then deploy it with Wrangler.
 
 ## Useful commands
 

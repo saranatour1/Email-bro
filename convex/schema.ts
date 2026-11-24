@@ -81,7 +81,8 @@ export default defineSchema({
     subject: v.string(),
     receivedAt: v.number(),
     // Domain mail has no mailbox to fetch from, so its raw email is kept AES-GCM encrypted.
-    raw: v.optional(v.object({ fileId: v.id('_storage'), iv: v.string() })),
+    // `perUser`: encrypted with the owner's own key; older mail used the deployment-wide key.
+    raw: v.optional(v.object({ fileId: v.id('_storage'), iv: v.string(), perUser: v.optional(v.literal(true)) })),
     // Set when the email arrived through a backfill run, so sorting counts toward that run.
     backfillRunId: v.optional(v.id('backfillRuns')),
     read: v.boolean(),
@@ -190,6 +191,17 @@ export default defineSchema({
     label: v.optional(vCategory),
     at: v.number(),
   }).index('by_runId_and_at', ['runId', 'at']),
+
+  // A user's own Cloudflare account, for sending and receiving on their domain. A table of its own, like
+  // mailboxSecrets, so no public query can return it. Everything but the domain is sealed with the user's key, and the
+  // row is deleted at `expiresAt`.
+  cloudflareAccounts: defineTable({
+    userId: v.id('users'),
+    domain: v.string(),
+    // { accountId, apiToken, zoneId } as JSON, sealed with the user's 'cloudflare' key.
+    sealed: v.string(),
+    expiresAt: v.number(),
+  }).index('by_userId', ['userId']),
 
   // The user's own labels. Each can match senders, a plain-words description Jev checks, or be added by hand.
   labels: defineTable({

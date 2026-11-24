@@ -5,6 +5,7 @@ import google from '@convex-dev/auth/components/google/convex.config.js'
 import workflow from '@convex-dev/workflow/convex.config.js'
 import batchWorker from '@convex-dev/batch-worker/convex.config.js'
 import shardedCounter from '@convex-dev/sharded-counter/convex.config.js'
+import cloudflareEmail from '@sarant/cloudflare-email-component/convex.config.js'
 
 const app = defineApp({
   env: {
@@ -14,13 +15,12 @@ const app = defineApp({
     // The frontend origin, e.g. http://localhost:3000. Optional so a new preview deployment can take its first push
     // before scripts/cloudflare-preview.sh sets it.
     SITE_URL: v.optional(v.string()),
-    // Shared secret the Cloudflare Email Worker sends with each inbound message.
+    // Never leaves the deployment: each user's inbound Worker gets its own secret derived from it. The shared Worker
+    // in workers/inbound may still send it as is.
     INBOUND_SECRET: v.optional(v.string()),
-    // Outbound for your own domain: Cloudflare Email Sending or Resend.
-    CLOUDFLARE_ACCOUNT_ID: v.optional(v.string()),
-    CLOUDFLARE_EMAIL_TOKEN: v.optional(v.string()),
+    // Outbound through Resend for your own domain. Cloudflare sending uses each user's own account instead.
     RESEND_API_KEY: v.optional(v.string()),
-    // AES-256 key (base64url) for domain mail at rest. Lives only here, never in the database.
+    // AES-256 key (base64url). Each user's data is encrypted with a key derived from it. Never in the database.
     MAIL_ENCRYPTION_KEY: v.optional(v.string()),
     // Secret for the HMAC refs shown instead of real email ids on the backfill tab. Set your own.
     ID_HASH_KEY: v.string(),
@@ -37,5 +37,8 @@ app.use(google, {
 app.use(workflow)
 app.use(batchWorker)
 app.use(shardedCounter)
+// Sends with each user's own Cloudflare credentials, passed per call. No httpPrefix: its routes check one
+// deployment-wide secret, so inbound mail comes through /inbound/email with a secret per user instead.
+app.use(cloudflareEmail)
 
 export default app

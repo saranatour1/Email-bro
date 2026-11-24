@@ -1,8 +1,12 @@
 import { ConvexError, v } from 'convex/values'
-import { internal } from '../../_generated/api'
+import { sendEmail } from '@sarant/cloudflare-email-component'
+import { components, internal } from '../../_generated/api'
 import { env } from '../../_generated/server'
 import { userAction } from '../../lib/functions'
 import { sendGmail } from '../../lib/gmail'
+import { cloudflareCredentials } from '../../lib/cloudflare'
+import { seal } from '../../lib/crypto'
+import { COPY_TTL_MS } from '../cloudflareAccounts/manage'
 import { buildMime, replySubject } from '../../lib/mail'
 import { loadMail } from './utils'
 
@@ -24,7 +28,9 @@ const reply = userAction({
       text,
       inReplyTo: message.rfcMessageId,
     }
-    const threading = mail.inReplyTo ? { 'In-Reply-To': mail.inReplyTo, References: mail.inReplyTo } : {}
+    const threading: Record<string, string> = mail.inReplyTo
+      ? { 'In-Reply-To': mail.inReplyTo, References: mail.inReplyTo }
+      : {}
 
     if (mailbox.provider === 'gmail') {
       await sendGmail(ctx, mailbox._id, buildMime(mail), message.threadId)
@@ -38,14 +44,21 @@ const reply = userAction({
         headers: threading,
       })
     } else {
-      if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_EMAIL_TOKEN) {
-        throw new ConvexError('CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_EMAIL_TOKEN are not set')
-      }
-      await post(
-        `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/email/sending/send`,
-        env.CLOUDFLARE_EMAIL_TOKEN,
-        { from: mail.from, to: mail.to, subject: mail.subject, text, headers: threading },
-      )
+      // The user's own Cloudflare account. The component keeps a copy sealed with the user's key, for COPY_TTL_MS.
+      const cf = await cloudflareCredentials(ctx, ctx.userId)
+      const owner = ctx.userId
+      const result = await sendEmail(ctx, components.cloudflareEmail, {
+        owner,
+        accountId: cf.accountId,
+        apiToken: cf.apiToken,
+        email: { from: mail.from, to: mail.to, subject: mail.subject, text, headers: threading },
+        seal: (plain) => seal(owner, 'mail-copy', plain),
+      })
+      await ctx.scheduler.runAfter(COPY_TTL_MS, internal.models.cloudflareAccounts.manage.forgetCopy, {
+        owner,
+        emailId: result.emailId,
+      })
+      if (result.error) throw new ConvexError(`Cloudflare didn't send it: ${result.error}`)
     }
   },
 })

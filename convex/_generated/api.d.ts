@@ -19,6 +19,7 @@ import type * as api_users from "../api/users.js";
 import type * as api_workflows from "../api/workflows.js";
 import type * as http from "../http.js";
 import type * as lib_board from "../lib/board.js";
+import type * as lib_cloudflare from "../lib/cloudflare.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_filters from "../lib/filters.js";
 import type * as lib_functions from "../lib/functions.js";
@@ -34,6 +35,7 @@ import type * as lib_snooze from "../lib/snooze.js";
 import type * as lib_triagePatch from "../lib/triagePatch.js";
 import type * as models_backfillRuns_migrate from "../models/backfillRuns/migrate.js";
 import type * as models_backfillRuns_run from "../models/backfillRuns/run.js";
+import type * as models_cloudflareAccounts_manage from "../models/cloudflareAccounts/manage.js";
 import type * as models_filters_manage from "../models/filters/manage.js";
 import type * as models_goals_manage from "../models/goals/manage.js";
 import type * as models_jevWorkflows_manage from "../models/jevWorkflows/manage.js";
@@ -75,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "api/workflows": typeof api_workflows;
   http: typeof http;
   "lib/board": typeof lib_board;
+  "lib/cloudflare": typeof lib_cloudflare;
   "lib/crypto": typeof lib_crypto;
   "lib/filters": typeof lib_filters;
   "lib/functions": typeof lib_functions;
@@ -90,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   "lib/triagePatch": typeof lib_triagePatch;
   "models/backfillRuns/migrate": typeof models_backfillRuns_migrate;
   "models/backfillRuns/run": typeof models_backfillRuns_run;
+  "models/cloudflareAccounts/manage": typeof models_cloudflareAccounts_manage;
   "models/filters/manage": typeof models_filters_manage;
   "models/goals/manage": typeof models_goals_manage;
   "models/jevWorkflows/manage": typeof models_jevWorkflows_manage;
@@ -146,4 +150,5 @@ export declare const components: {
   workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
   batchWorker: import("@convex-dev/batch-worker/_generated/component.js").ComponentApi<"batchWorker">;
   shardedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"shardedCounter">;
+  cloudflareEmail: import("@sarant/cloudflare-email-component/_generated/component.js").ComponentApi<"cloudflareEmail">;
 };

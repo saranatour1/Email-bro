@@ -38,6 +38,9 @@ importers:
       '@fontsource-variable/sora':
         specifier: ^5.3.0
         version: 5.3.0
+      '@sarant/cloudflare-email-component':
+        specifier: 0.4.0
+        version: 0.4.0(convex@1.51.0(react@19.3.1))
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.104.3(react@19.3.1)
@@ -2008,6 +2011,11 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
+
+  '@sarant/cloudflare-email-component@0.4.0':
+    resolution: {integrity: sha512-YN68d4ktevrwhYin6rrHQAIJpjlNSpKuliyadhMalxc/CCkX5ssLLk3ys3yQSO7cUV33Yy7orsFuGUC93fHXwg==}
+    peerDependencies:
+      convex: ^1.49.0
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
@@ -6749,6 +6757,10 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.0.1': {}
+
+  '@sarant/cloudflare-email-component@0.4.0(convex@1.51.0(react@19.3.1))':
+    dependencies:
+      convex: 1.51.0(react@19.3.1)
 
   '@sec-ant/readable-stream@0.4.1': {}
 

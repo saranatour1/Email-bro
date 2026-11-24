@@ -19,7 +19,8 @@ export const loadMail = async (ctx: ActionCtx, message: Doc<'messages'>): Promis
   if (message.raw) {
     const blob = await ctx.storage.get(message.raw.fileId)
     if (!blob) throw new Error('Email content is missing')
-    return parseRaw(await decrypt(await blob.arrayBuffer(), message.raw.iv))
+    const owner = message.raw.perUser ? message.userId : undefined
+    return parseRaw(await decrypt(await blob.arrayBuffer(), message.raw.iv, owner))
   }
   const token = await accessToken(ctx, message.mailboxId)
   const { raw } = (await gmailFetch(token, `/messages/${message.externalId}?format=raw`)) as { raw: string }

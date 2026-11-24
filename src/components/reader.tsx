@@ -7,9 +7,10 @@ import { Placeholder } from '@tiptap/extensions'
 import { Check, ChevronDown, Mail, Reply, ScanText, X } from 'lucide-react'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import { api } from '~/lib/api'
-import { ROUTES, labelMeta, routeMeta } from '~/lib/status'
+import { ROUTES, routeMeta } from '~/lib/status'
 import { cn } from '~/lib/utils'
 import { Pill } from '~/components/message-list'
+import { LabelChips, LabelMenu } from '~/components/labels'
 import { StatusMenu } from '~/components/status-menu'
 import { Button } from '~/components/ui/button'
 import { ScrollArea } from '~/components/ui/scroll-area'
@@ -53,18 +54,13 @@ export const Reader = ({
   if (message === undefined) {
     return <section className={cn('p-8 text-center text-sm text-muted-foreground', width)}>Loading…</section>
   }
-  const label = message.category ? labelMeta(message.category) : undefined
 
   return (
     <section className={cn('flex flex-col', width)}>
       <header className="flex h-11 shrink-0 items-center gap-1.5 border-b px-2">
         <StatusMenu messageId={id} status={message.status} snoozedUntil={message.snoozedUntil} withLabel />
-        {label && (
-          <Pill>
-            <span className={cn('size-1.5 rounded-full', label.dot)} />
-            {label.label}
-          </Pill>
-        )}
+        <LabelMenu messageId={id} labelIds={message.labelIds} />
+        <LabelChips ids={message.labelIds} max={3} className="hidden md:flex" />
         <Pill className="hidden max-w-56 font-mono sm:flex">
           <Mail className="size-3" />
           <span className="truncate">{message.mailboxAddress}</span>

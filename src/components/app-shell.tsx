@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -17,6 +17,7 @@ import {
   Settings,
   Sparkles,
   SquareKanban,
+  Tag,
   Target,
   Workflow as WorkflowIcon,
 } from 'lucide-react'
@@ -26,6 +27,7 @@ import type { Category, Status } from '~/lib/status'
 import { api } from '~/lib/api'
 import { LABELS, STATUSES, StatusIcon } from '~/lib/status'
 import { cn } from '~/lib/utils'
+import { LabelDot } from '~/components/labels'
 import { Logo } from '~/components/logo'
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar'
 import { Button } from '~/components/ui/button'
@@ -205,7 +207,9 @@ const INBOX_COLORS = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-ros
 
 const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
   const { view } = useParams({ strict: false })
+  const { label: labelId } = useSearch({ strict: false })
   const { results: mailboxes } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
+  const labels = useQuery(api.labels.list, {})
   // `scope` undefined = every inbox; Status and Labels follow whichever inbox is selected.
   const nav = (id: View, icon: ReactNode, label: string, scope = inbox, active = view === id) => (
     <SidebarMenuItem key={id}>
@@ -218,7 +222,7 @@ const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
     </SidebarMenuItem>
   )
   const page = (
-    to: '/backfill' | '/goals' | '/filters' | '/workflows' | '/settings',
+    to: '/backfill' | '/goals' | '/filters' | '/workflows' | '/labels' | '/settings',
     icon: ReactNode,
     label: string,
   ) => (
@@ -238,7 +242,7 @@ const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
           <SidebarMenu>
             {nav('focus', <Sparkles />, 'Focus', undefined, !inbox && view === 'focus')}
             {nav('board', <SquareKanban />, 'Board', undefined, !inbox && view === 'board')}
-            {nav('all', <Inbox />, 'All mail', undefined, !inbox && view === 'all')}
+            {nav('all', <Inbox />, 'All mail', undefined, !inbox && view === 'all' && !labelId)}
           </SidebarMenu>
         </SidebarGroup>
         {mailboxes.length > 0 && (
@@ -257,22 +261,28 @@ const AppSidebar = ({ inbox }: { inbox?: Id<'mailboxes'> }) => {
         <Section title="Status">
           {STATUSES.filter((s) => s.id !== 'inbox').map((s) => nav(s.id, <StatusIcon status={s.id} />, s.label))}
         </Section>
-        <Section title="Labels">
-          {LABELS.filter((l) => l.id !== 'junk').map((l) =>
-            nav(
-              l.id,
-              <span className="flex size-4 items-center justify-center">
-                <span className={cn('size-2 rounded-full', l.dot)} />
-              </span>,
-              l.label,
-            ),
-          )}
-        </Section>
+        {!!labels?.length && (
+          <Section title="Labels">
+            {labels.map((l) => (
+              <SidebarMenuItem key={l._id}>
+                <SidebarMenuButton asChild isActive={labelId === l._id} tooltip={l.name} className={itemClass}>
+                  <Link to="/mail/$view" params={{ view: 'all' }} search={{ inbox, label: l._id }}>
+                    <span className="flex size-4 items-center justify-center">
+                      <LabelDot label={l} />
+                    </span>
+                    <span>{l.name}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </Section>
+        )}
         <Section title="Automate">
           {page('/backfill', <DatabaseZap />, 'Backfill')}
           {page('/goals', <Target />, 'Goals')}
           {page('/filters', <ListFilter />, 'Filters')}
           {page('/workflows', <WorkflowIcon />, 'Workflows')}
+          {page('/labels', <Tag />, 'Labels')}
           {page('/settings', <Settings />, 'Mailboxes')}
         </Section>
       </SidebarContent>

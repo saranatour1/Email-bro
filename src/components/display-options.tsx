@@ -14,12 +14,15 @@ import {
 
 export type Display = {
   groupBy: 'jev' | 'status' | 'label'
+  // The user's own labels.
   labels: boolean
+  // Jev's six built-in kinds (People, Updates…). Off by default: they sort mail behind the scenes.
+  categories: boolean
   dates: boolean
   hiddenColumns: Array<string>
 }
 
-const DEFAULTS: Display = { groupBy: 'jev', labels: true, dates: true, hiddenColumns: [] }
+const DEFAULTS: Display = { groupBy: 'jev', labels: true, categories: false, dates: true, hiddenColumns: [] }
 const KEY = 'email-bro:display'
 
 // Per-browser preference, so localStorage is enough; it may be unavailable (private mode).
@@ -46,6 +49,7 @@ export const useDisplay = () => {
 
 const PROPERTIES = [
   { key: 'labels', label: 'Labels' },
+  { key: 'categories', label: 'Categories' },
   { key: 'dates', label: 'Dates' },
 ] as const
 

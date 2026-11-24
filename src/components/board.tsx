@@ -28,6 +28,7 @@ import { cn } from '~/lib/utils'
 import { Button } from '~/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/ui/dropdown-menu'
 import { Pill, shortDate } from '~/components/message-list'
+import { LabelChips } from '~/components/labels'
 
 // A column reads either one Jev route (`route`) or one list view (`view`); dropping sets `route` or `status`.
 type Column = {
@@ -340,7 +341,7 @@ const Card = ({
   selected: boolean
   draggable: boolean
 }) => {
-  const label = display.labels && m.category && m.category !== column.view ? labelMeta(m.category) : undefined
+  const category = display.categories && m.category && m.category !== column.view ? labelMeta(m.category) : undefined
   const parked = column.route === 'reading' && !!m.triageParked
   const reading = column.route === 'reading' && !parked
   const top = m.jev ? Math.max(...Object.values(m.jev.routeProbabilities)) : 1
@@ -389,12 +390,13 @@ const Card = ({
               <HelpCircle className="size-3" /> Check me
             </Pill>
           )}
-          {label && (
+          {category && (
             <Pill>
-              <span className={cn('size-1.5 rounded-full', label.dot)} />
-              {label.label}
+              <span className={cn('size-1.5 rounded-full', category.dot)} />
+              {category.label}
             </Pill>
           )}
+          {display.labels && <LabelChips ids={m.labelIds} max={3} className="h-6 px-0.5" />}
         </div>
       )}
     </Link>

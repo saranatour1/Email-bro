@@ -1,6 +1,7 @@
 import { ConvexError, v } from 'convex/values'
 import { paginationOptsValidator } from 'convex/server'
 import { literals } from 'convex-helpers/validators'
+import { filter } from 'convex-helpers/server/filter'
 import { internalQuery } from '../../_generated/server'
 import { userQuery } from '../../lib/functions'
 import { boardStatuses } from '../../lib/board'
@@ -17,9 +18,11 @@ const list = userQuery({
     view: vView,
     // Omitted = all inboxes.
     mailboxId: v.optional(v.id('mailboxes')),
+    // Only mail with this label of the user's.
+    labelId: v.optional(v.id('labels')),
     paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx, { view, mailboxId, paginationOpts }) => {
+  handler: async (ctx, { view, mailboxId, labelId, paginationOpts }) => {
     const { userId } = ctx
     if (mailboxId) {
       const mailbox = await ctx.db.get('mailboxes', mailboxId)
@@ -38,7 +41,10 @@ const list = userQuery({
     // shortcut: one inbox is a filter over the user's index (short pages are fine at personal scale); add per-mailbox indexes if it gets slow.
     // eslint-disable-next-line @convex-dev/no-filter-in-query
     const rows = mailboxId ? ordered.filter((q) => q.eq(q.field('mailboxId'), mailboxId)) : ordered
-    return await rows.paginate(paginationOpts)
+    // shortcut: a label is a filter over the same index, since Convex can't index into an array. Fine at personal
+    // scale; add a messageLabels table with an index if label views get slow.
+    const labelled = labelId ? filter(rows, (m) => !!m.labelIds?.includes(labelId)) : rows
+    return await labelled.paginate(paginationOpts)
   },
 })
 

@@ -10,6 +10,7 @@ import { useStablePaginatedQuery } from '~/hooks/use-stable-paginated-query'
 import { api } from '~/lib/api'
 import { labelMeta } from '~/lib/status'
 import { cn } from '~/lib/utils'
+import { LabelChips } from '~/components/labels'
 import { StatusMenu } from '~/components/status-menu'
 import { Button } from '~/components/ui/button'
 import { ScrollArea } from '~/components/ui/scroll-area'
@@ -25,19 +26,21 @@ const EMPTY: Partial<Record<ListView, string>> = {
 export const MessageList = ({
   view,
   inbox,
+  labelId,
   display,
   compact,
   selectedId,
 }: {
   view: ListView
   inbox?: Id<'mailboxes'>
+  labelId?: Id<'labels'>
   display: Display
   compact: boolean
   selectedId?: Id<'messages'>
 }) => {
   const { results, status, loadMore } = useStablePaginatedQuery(
     api.messages.list,
-    { view, mailboxId: inbox },
+    { view, mailboxId: inbox, labelId },
     { initialNumItems: 50 },
   )
   const { results: mailboxes } = usePaginatedQuery(api.mailboxes.list, {}, { initialNumItems: 50 })
@@ -117,7 +120,7 @@ const MessageRow = ({
   address?: string
 }) => {
   const sender = m.fromName
-  const label = display.labels && m.category && m.category !== view ? labelMeta(m.category) : undefined
+  const category = display.categories && m.category && m.category !== view ? labelMeta(m.category) : undefined
 
   return (
     <li
@@ -152,10 +155,11 @@ const MessageRow = ({
             <span className="min-w-0 flex-1 truncate">
               <span className={cn(!m.read && 'font-medium')}>{m.subject}</span>
             </span>
-            {label && (
+            {display.labels && <LabelChips ids={m.labelIds} />}
+            {category && (
               <Pill>
-                <span className={cn('size-1.5 rounded-full', label.dot)} />
-                {label.label}
+                <span className={cn('size-1.5 rounded-full', category.dot)} />
+                {category.label}
               </Pill>
             )}
             {address && (

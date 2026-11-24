@@ -1,5 +1,5 @@
 // Gmail-style matching: case-insensitive "contains", with `|` separating alternatives. An empty pattern matches.
-const hit = (pattern: string | undefined, text: string) =>
+export const hit = (pattern: string | undefined, text: string) =>
   !pattern ||
   pattern
     .toLowerCase()

@@ -3,10 +3,9 @@
 # every other branch gets a Worker preview URL and a Convex preview deployment with the same name, and the
 # deployment's SITE_URL is pointed at the preview URL so Google sign-in returns there.
 #
-# Settings in Cloudflare (Workers Builds uses one build command for every branch):
-#   Build command:                        bash scripts/cloudflare-preview.sh build
-#   Deploy command (production):          npx wrangler deploy
-#   Non-production branch deploy command: bash scripts/cloudflare-preview.sh deploy
+# Settings in Cloudflare (the same commands work for every branch):
+#   Build command:  bash scripts/cloudflare-preview.sh build
+#   Deploy command: bash scripts/cloudflare-preview.sh deploy (production and non-production)
 # Build variable: CONVEX_DEPLOY_KEY, set per environment in Cloudflare: a Convex production deploy key for the
 # production branch, a preview deploy key for the rest.
 set -euo pipefail
@@ -31,6 +30,11 @@ case "${1:-}" in
     fi
     ;;
   deploy)
+    # Production goes live on the Worker's own routes; its SITE_URL is set once in the Convex dashboard.
+    if [ "$branch" = "${PRODUCTION_BRANCH:-master}" ]; then
+      pnpm exec wrangler deploy
+      exit 0
+    fi
     out=$(pnpm exec wrangler versions upload --preview-alias "$name" 2>&1) || { echo "$out"; exit 1; }
     echo "$out"
     url=$(printf '%s\n' "$out" | grep 'Version Preview Alias URL:' | grep -oE 'https://[a-z0-9.-]+' | head -1 || true)

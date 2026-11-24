@@ -11,8 +11,9 @@ const app = defineApp({
     // One Google OAuth client serves both the master login and Gmail connect.
     GOOGLE_CLIENT_ID: v.string(),
     GOOGLE_CLIENT_SECRET: v.string(),
-    // The frontend origin, e.g. http://localhost:3000.
-    SITE_URL: v.string(),
+    // The frontend origin, e.g. http://localhost:3000. Optional so a new preview deployment can take its first push
+    // before scripts/cloudflare-preview.sh sets it.
+    SITE_URL: v.optional(v.string()),
     // Shared secret the Cloudflare Email Worker sends with each inbound message.
     INBOUND_SECRET: v.optional(v.string()),
     // Outbound for your own domain: Cloudflare Email Sending or Resend.

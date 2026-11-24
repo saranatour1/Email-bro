@@ -20,7 +20,8 @@ const suggest = userAction({
     const context = await ctx.runQuery(internal.models.jevWorkflows.suggest.context, { userId: ctx.userId })
     if (context.emails === 0) return []
     const { output } = await generateText({
-      model: convexGateway.messages(MODEL),
+      // zdr: senders and subjects are in the prompt, so only endpoints that keep no copy.
+      model: convexGateway.messages(MODEL, { zdr: true }),
       maxOutputTokens: 2000,
       output: Output.array({
         element: jsonSchema<Suggestion>({

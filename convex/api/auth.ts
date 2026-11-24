@@ -8,7 +8,9 @@ export const { signOut, refreshSession, isAuthenticated } = auth
 
 export const { startSignInWithGoogle, completeSignInWithGoogle } = setupGoogle(auth, {
   component: components.authGoogle,
-  allowedRedirectOrigins: [env.SITE_URL],
+  // A new preview deployment gets its first push before the preview build sets SITE_URL
+  // (scripts/cloudflare-preview.sh). Until then, sign-in redirects nowhere instead of failing the deploy.
+  allowedRedirectOrigins: env.SITE_URL ? [env.SITE_URL] : [],
 }).attachUserCallbacks({
   createUser: internal.models.users.auth.createUser,
   onSignIn: internal.models.users.auth.onSignIn,

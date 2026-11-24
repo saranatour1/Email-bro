@@ -11,6 +11,12 @@ import type { ActionCtx } from '../../../_generated/server'
 const SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
 const redirectUri = () => `${env.CONVEX_SITE_URL}/gmail/callback`
 
+// Where to send the browser after Gmail connect: the app's settings page, with the outcome in the query.
+export const settingsUrl = (query: string) => {
+  if (!env.SITE_URL) throw new Error('SITE_URL is not set on this deployment')
+  return `${env.SITE_URL}/settings?${query}`
+}
+
 const startGmailConnect = userAction({
   args: {},
   handler: async (ctx) => {
@@ -34,9 +40,9 @@ export const connectApi = { startGmailConnect }
 // Called by the /gmail/callback HTTP route. Returns where to send the browser.
 export const finishConnect = async (ctx: ActionCtx, code: string, state: string) => {
   const userId = await ctx.runMutation(internal.models.mailboxes.gmail.connect.consumeOauthState, { state })
-  if (!userId) return `${env.SITE_URL}/settings?error=expired`
+  if (!userId) return settingsUrl('error=expired')
   const tokens = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: redirectUri() })
-  if (!tokens.refresh_token) return `${env.SITE_URL}/settings?error=no_refresh_token`
+  if (!tokens.refresh_token) return settingsUrl('error=no_refresh_token')
   const profile = (await gmailFetch(tokens.access_token, '/profile')) as { emailAddress: string; historyId: string }
   const mailboxId = await ctx.runMutation(internal.models.mailboxes.gmail.connect.upsertGmail, {
     userId,
@@ -47,7 +53,7 @@ export const finishConnect = async (ctx: ActionCtx, code: string, state: string)
     expiresAt: Date.now() + tokens.expires_in * 1000,
   })
   await ctx.scheduler.runAfter(0, internal.models.mailboxes.gmail.sync.sync, { mailboxId })
-  return `${env.SITE_URL}/settings?connected=${encodeURIComponent(profile.emailAddress)}`
+  return settingsUrl(`connected=${encodeURIComponent(profile.emailAddress)}`)
 }
 
 export const saveOauthState = internalMutation({

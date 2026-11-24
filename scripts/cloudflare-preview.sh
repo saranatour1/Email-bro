@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Branch previews on Cloudflare Workers Builds. Each branch gets a Worker preview URL and a Convex preview deployment
-# with the same name, and the deployment's SITE_URL is pointed at the preview URL so Google sign-in returns there.
+# Builds on Cloudflare Workers Builds. The production branch (master) deploys the Convex production deployment;
+# every other branch gets a Worker preview URL and a Convex preview deployment with the same name, and the
+# deployment's SITE_URL is pointed at the preview URL so Google sign-in returns there.
 #
-# Non-production branch settings in Cloudflare:
-#   Build command:  bash scripts/cloudflare-preview.sh build
-#   Deploy command: bash scripts/cloudflare-preview.sh deploy
-# Build variables: CONVEX_DEPLOY_KEY (a Convex preview deploy key).
+# Settings in Cloudflare (Workers Builds uses one build command for every branch):
+#   Build command:                        bash scripts/cloudflare-preview.sh build
+#   Deploy command (production):          npx wrangler deploy
+#   Non-production branch deploy command: bash scripts/cloudflare-preview.sh deploy
+# Build variables: CONVEX_DEPLOY_KEY (a Convex preview deploy key) and CONVEX_PROD_DEPLOY_KEY (a production one).
 set -euo pipefail
 
 branch="${WORKERS_CI_BRANCH:-$(git branch --show-current)}"
@@ -19,7 +21,15 @@ fi
 
 case "${1:-}" in
   build)
-    pnpm exec convex deploy --preview-name "$name" --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
+    if [ "$branch" = "${PRODUCTION_BRANCH:-master}" ]; then
+      if [ -z "${CONVEX_PROD_DEPLOY_KEY:-}" ]; then
+        echo "Set CONVEX_PROD_DEPLOY_KEY (a Convex production deploy key) in the Cloudflare build variables." >&2
+        exit 1
+      fi
+      CONVEX_DEPLOY_KEY="$CONVEX_PROD_DEPLOY_KEY" pnpm exec convex deploy --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
+    else
+      pnpm exec convex deploy --preview-name "$name" --cmd 'pnpm build' --cmd-url-env-var-name VITE_CONVEX_URL
+    fi
     ;;
   deploy)
     out=$(pnpm exec wrangler versions upload --preview-alias "$name" 2>&1) || { echo "$out"; exit 1; }

@@ -23,7 +23,7 @@ Email Bro is one calm place for several inboxes (Gmail accounts plus addresses o
 | Piece        | Choice                                                                                            |
 | ------------ | ------------------------------------------------------------------------------------------------- |
 | Backend      | Convex (`convex/`), cloud dev deployment in `.env.local`                                          |
-| Auth         | Convex Auth **v2 beta** (`@convex-dev/auth@2.0.0-beta.0`), Google sign-in                         |
+| Auth         | Convex Auth **v2** (`@convex-dev/auth@2.1.0`), Google sign-in                                     |
 | Helpers      | `convex-helpers`: use it whenever it already solves the problem (see below)                       |
 | Validation   | Convex `v` validators, plus **Zod** or **ArkType**, whichever the project uses                    |
 | Durable jobs | `@convex-dev/workflow` (per-email triage), `@convex-dev/batch-worker` (Gmail backfill queue)      |

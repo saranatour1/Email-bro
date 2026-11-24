@@ -17,7 +17,11 @@ export const vFilterStatus = literals('in_progress', 'done', 'cancelled')
 export const vWorkflowAction = literals('focus', 'in_progress', 'done', 'cancelled', 'spam')
 
 export default defineSchema({
-  users: defineTable({ name: v.optional(v.string()), email: v.optional(v.string()), image: v.optional(v.string()) }),
+  users: defineTable({
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    image: v.optional(v.string()),
+  }).index('by_email', ['email']),
 
   // One row per connected address. Secrets live in `mailboxSecrets` so no public
   // query can leak them by returning a mailbox doc.

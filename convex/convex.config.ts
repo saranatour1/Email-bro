@@ -8,8 +8,6 @@ import shardedCounter from '@convex-dev/sharded-counter/convex.config.js'
 
 const app = defineApp({
   env: {
-    AUTH_PRIVATE_KEY: v.string(),
-    AUTH_JWKS: v.string(),
     // One Google OAuth client serves both the master login and Gmail connect.
     GOOGLE_CLIENT_ID: v.string(),
     GOOGLE_CLIENT_SECRET: v.string(),
@@ -28,10 +26,7 @@ const app = defineApp({
   },
 })
 
-app.use(auth, {
-  httpPrefix: '/auth',
-  env: { AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY, AUTH_JWKS: app.env.AUTH_JWKS },
-})
+app.use(auth)
 
 app.use(google, {
   httpPrefix: '/oauth/google',

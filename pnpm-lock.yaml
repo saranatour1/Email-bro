@@ -10,22 +10,22 @@ importers:
     dependencies:
       '@convex-dev/ai-sdk-provider':
         specifier: ^0.3.0
-        version: 0.3.0(ai@7.0.143(zod@4.6.7))(convex@1.47.0(react@19.3.1))
+        version: 0.3.0(ai@7.0.143(zod@4.6.7))(convex@1.51.0(react@19.3.1))
       '@convex-dev/auth':
-        specifier: 2.0.0-beta.0
-        version: 2.0.0-beta.0(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
+        specifier: 2.1.0
+        version: 2.1.0(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
       '@convex-dev/batch-worker':
         specifier: ^0.3.6
-        version: 0.3.6(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
+        version: 0.3.6(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
       '@convex-dev/react-query':
         specifier: ^0.1.0
-        version: 0.1.0(@tanstack/react-query@5.104.3(react@19.3.1))(convex@1.47.0(react@19.3.1))
+        version: 0.1.0(@tanstack/react-query@5.104.3(react@19.3.1))(convex@1.51.0(react@19.3.1))
       '@convex-dev/sharded-counter':
         specifier: ^0.2.3
-        version: 0.2.3(convex@1.47.0(react@19.3.1))
+        version: 0.2.3(convex@1.51.0(react@19.3.1))
       '@convex-dev/workflow':
         specifier: ^0.4.10
-        version: 0.4.10(@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))(react@19.3.1))(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))
+        version: 0.4.10(@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.51.0(react@19.3.1))(react@19.3.1))(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.51.0(react@19.3.1))
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.3.0
         version: 5.3.0
@@ -69,11 +69,11 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0
       convex:
-        specifier: ^1.47.0
-        version: 1.47.0(react@19.3.1)
+        specifier: ^1.51.0
+        version: 1.51.0(react@19.3.1)
       convex-helpers:
         specifier: ^0.1.128
-        version: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
+        version: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
       evlog:
         specifier: 2.32.0
         version: 2.32.0(@tanstack/start-client-core@1.170.37)(ai@7.0.143(zod@4.6.7))(express@5.3.0)(hono@4.13.13)(react@19.3.1)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.27.0)(jiti@2.7.0))
@@ -98,7 +98,7 @@ importers:
     devDependencies:
       '@convex-dev/eslint-plugin':
         specifier: ^5.0.0
-        version: 5.0.0(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(eslint@10.13.0(jiti@2.7.0))
+        version: 5.0.0(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(eslint@10.13.0(jiti@2.7.0))
       '@tailwindcss/typography':
         specifier: ^0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
@@ -343,12 +343,11 @@ packages:
       ai: ^7.0.105
       convex: ^1.45.0
 
-  '@convex-dev/auth@2.0.0-beta.0':
-    resolution: {integrity: sha512-GNIYITbRvLg8Ev5YW3j/rJ71Dft/fGYO5kkTJigVwuYCcn3WOeVY9+1IpKDntzMOZou1uDZwlPnR0BcWZWGaKg==}
-    hasBin: true
+  '@convex-dev/auth@2.1.0':
+    resolution: {integrity: sha512-C3fCWPIf74NJfl2SE8x7mUXHCx3nTX96QDRWFh4/tg/U3vuTpR6PZeLq3y63hsS9h/m1rzLElN42rXFENaGHLA==}
     peerDependencies:
       '@convex-dev/resend': ^0.2.8
-      convex: ^1.46.0
+      convex: ^1.48.0
       next: ^16.0.0
       react: ^18.0.0 || ^19.0.0
     peerDependenciesMeta:
@@ -1538,42 +1537,36 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@rolldown/binding-linux-arm64-musl@1.2.14':
     resolution: {integrity: sha512-BJ2CL19M6uuWesMgnqJzgxoI+N+eV7b0A9O9vLV42y+gitC41fNa8KElau1tHVzuLWX5GzEuxMPhAO0tQXQMkg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@rolldown/binding-linux-ppc64-gnu@1.2.14':
     resolution: {integrity: sha512-4+Kl8daPV8NDHaD7mfCcc1pRM+Qg7ab8DyMm5FG5WoZgv4h2i3KFN1CybYBNbQqmuYm7ftJLvmMI1eHYJ22S/Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@rolldown/binding-linux-s390x-gnu@1.2.14':
     resolution: {integrity: sha512-V/h8ePq1fKDrmtFMz6xcCN3DKvuvMRrwwD1q0PkBeeo4DpK64biaKvqWGVxqCeYKqeRk7gE7/iKPxLCn08O97A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@rolldown/binding-linux-x64-gnu@1.2.14':
     resolution: {integrity: sha512-WxalXzgrLVpKC93xfpaJ3gCXUWzeCr+FRCbDVD2mUAy4L6Vo3lNVz0epUEUpxPWJkLNYUwM4OSIikv36OJ9mLg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@rolldown/binding-linux-x64-musl@1.2.14':
     resolution: {integrity: sha512-3G3tnAmTpdk9jO3GQtyHXqeFD2SlecfTws/Y3M2mmj9nMBwwuLT4kur8sZKeu7ENUHSpVO3cIsm5A52LEWWwlg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@rolldown/binding-openharmony-arm64@1.2.14':
     resolution: {integrity: sha512-qyr5XiNGxm2ytx17vvtcJ9nXn6v1gENETi503bJx3OGwZ1tSonj7BosxbMa/xeAfSl5iS9X6KjEWYXLu6v1L7Q==}
@@ -1661,28 +1654,24 @@ packages:
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-arm64-musl@4.3.3':
     resolution: {integrity: sha512-Md44bD6veX/PC5iyF8cDVnw4HBIANZepRZZ7a8DQOvkfo5WUBwcp6iAuCUz23u+4SUkhJlD3eL7hNdW8ezd/kA==}
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-linux-x64-gnu@4.3.3':
     resolution: {integrity: sha512-tx7us1muwOKAKWao2v/GaafFeQboE6aj88vC6ziN2NCGcRm8gWUhwjzg+YdVB1e4boAtdtma4L43onunI6NS4w==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-x64-musl@4.3.3':
     resolution: {integrity: sha512-SJxX60smvHgasZoBy11dX6YRjXJFovwWBoedhbQPOBzgFWBHGB+TVPWB9BxzR7TTxU8FQZAI2AyiNCMzFm8Img==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-wasm32-wasi@4.3.3':
     resolution: {integrity: sha512-jx1+rPhY/5Ympkktd656HBWEBLxP7dH06losBLjjf5vgCODXvi9KhtftWcMIwTFIDqBr7cRnQkdLnAG+IOlGvQ==}
@@ -2320,61 +2309,51 @@ packages:
     resolution: {integrity: sha512-zJc0H99FEPoFfSrNpa91HYfxzfAJCr502oxNK1cfdC9hlaFI43RT+JFCann9JUgZmLzzntChHyn13Sgn9ljHNg==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-arm64-musl@1.12.2':
     resolution: {integrity: sha512-KQ3Lki6l+Pz1k/eBipN41ES+YUK30beLGb9YqcB1O542cyLCNE6GaxrfcY3T6EezmGGk84wb5XyO9loTM9tkcA==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-loong64-gnu@1.12.2':
     resolution: {integrity: sha512-3SJGEh1DborhG6pyxvhPzCT4bbSIVihsvgJc13P1bHG7KLdNDaF9T3gsTwFc7Jw/5Y5/iWOjkEx7Zy0NvCGX3Q==}
     cpu: [loong64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-loong64-musl@1.12.2':
     resolution: {integrity: sha512-jiuG/Obbel7uw1PwHNFfrkiKhLAF6mnyZ6aWlOAVN9WqKm8v0OFGnciJIHu8+CMvXLQ8AD51LPzAoUfT21D5Ew==}
     cpu: [loong64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-ppc64-gnu@1.12.2':
     resolution: {integrity: sha512-q7xRvVpmcfeL+LlZg8Pbbo6QaTZwDU5BaGZbwfhkEsXJn3Was8xYfE0RBH266xZt0rM6B7i8xAYIvjthuUIWHg==}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-gnu@1.12.2':
     resolution: {integrity: sha512-0CVdx6lcnT3Q9inOH8tsMIOJ6ImndllMjqJHg8RLVdB7Vq4SfkEXl9mCSsVNuNA4MCYycRicCUxPCabVHJRr6A==}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-musl@1.12.2':
     resolution: {integrity: sha512-iOwlRo9vnp6R6ohHQS11n0NnfdXx/omhkocmIfaPRpQhKZ+3BDMkkdRVh53qjkFkpPddf+FETA28NwGN7l5l+w==}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-s390x-gnu@1.12.2':
     resolution: {integrity: sha512-HYJtLfXq94q8iZNFT1lknx258wlkkWhZeUXJRqzKBBUJ00CvZ+N33zgbCqimLjsyw5Va6uUxhVa12mI+kaveEw==}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-gnu@1.12.2':
     resolution: {integrity: sha512-mPsUhunKKDih5O96Y6enDQyHc1SqBPlY1E/SfMWDM3EdJ95Z9CArPeCVwCCqbP45ljvivdEk8Fxn+SIb1rDAJQ==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-musl@1.12.2':
     resolution: {integrity: sha512-azrt6+5ydLd8Vt210AAFis/lZevSfPw93EJRIJG+xPu4WCJ8K0kppCTpMyLPcKT7H15M4Jnt2tMp5bOvCkRC6A==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-openharmony-arm64@1.12.2':
     resolution: {integrity: sha512-YZ9hP4O0X9PQb8eO980qmLNGH4zT3I9+SZTdt0Pr0YyuGQhYKoOZkV02VzrzyOZJ5xIJ3UFIenKkUkGg8GjgWQ==}
@@ -2482,9 +2461,6 @@ packages:
     resolution: {integrity: sha512-9k3v7xcHwgdO/DruxGIg4HtjvlAZlcnsX/mzqUb1t3NkYnl9kK2UJ+Gq0io+vQf7iT//BD/HB/NBkUR1LWxoeA==}
     engines: {node: '>=14'}
 
-  argon2id-wasm@0.0.0-alpha.2:
-    resolution: {integrity: sha512-Bxa3aVWUbpg/hKTyHdjeLT68mJXNLftm1W3tXVXu/X83vmpTJ3zzgOhNMzu33Th2iNDxMU1kU4/MEGgW5udMgQ==}
-
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
@@ -2580,10 +2556,6 @@ packages:
     resolution: {integrity: sha512-ywqV+5MmyL4E7ybXgKys4DugZbX0FC6LnwrhjuykIjnK9k8OQacQ7axGKnjDXWNhns0xot3bZI5h55H8yo9cJg==}
     engines: {node: '>=6'}
 
-  cli-spinners@3.4.0:
-    resolution: {integrity: sha512-bXfOC4QcT1tKXGorxL3wbJm6XJPDqEnij2gQ2m7ESQuE+/z9YFIWnl/5RpTiKWbMq3EVKR4fRLJGn6DVfu0mpw==}
-    engines: {node: '>=18.20'}
-
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
@@ -2654,9 +2626,9 @@ packages:
       zod:
         optional: true
 
-  convex@1.47.0:
-    resolution: {integrity: sha512-B1z/lOmex7i09NASq8+2WG9rZLzGXXOSkpwGOpaNIvOs4awyW4RMgpVBjt8r2wvvHwhEBEsOr2pGYpulnmAxYQ==}
-    engines: {node: '>=20.0.0', npm: '>=7.0.0'}
+  convex@1.51.0:
+    resolution: {integrity: sha512-Y5gS+JmT2JBq76S3CrQDrdL/Ijs4ZRKsvz3cu5EmHf/QxW18QrHunb5j9WC6lAbWbWc/gvmqpa5lvXzLXFQVJA==}
+    engines: {node: '>=22.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
       '@auth0/auth0-react': ^2.0.1
@@ -3478,56 +3450,48 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-arm64-gnu@1.33.0:
     resolution: {integrity: sha512-j2v/itmy4HlNxlc6voKXYgBqNi0Ng2LShg4z7GufpEgs05P+2suBVyi9I6YHq5uoVFx9ETin3eCEhLVyXGQnKg==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.32.0:
     resolution: {integrity: sha512-UpQkoenr4UJEzgVIYpI80lDFvRmPVg6oqboNHfoH4CQIfNA+HOrZ7Mo7KZP02dC6LjghPQJeBsvXhJod/wnIBg==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-linux-arm64-musl@1.33.0:
     resolution: {integrity: sha512-yiO5ROMuYQgXbC60yjZU5CYSFZGKXL0HFATXt9mHJn1+zW55oCtMI9NfcVhYLMFDL7gV7oBPon/EmMMGg2OvtQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.32.0:
     resolution: {integrity: sha512-V7Qr52IhZmdKPVr+Vtw8o+WLsQJYCTd8loIfpDaMRWGUZfBOYEJeyJIkqGIDMZPwPx24pUMfwSxxI8phr/MbOA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-x64-gnu@1.33.0:
     resolution: {integrity: sha512-ar+Ju7LmcN0Jo4FpL4hpFybwNG9/3A/Br5KW2n2jyODg3MEZXaDYADdemoNS+BDNfMgKvylJLj4S5tyRActuAg==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.32.0:
     resolution: {integrity: sha512-bYcLp+Vb0awsiXg/80uCRezCYHNg1/l3mt0gzHnWV9XP1W5sKa5/TCdGWaR/zBM2PeF/HbsQv/j2URNOiVuxWg==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-linux-x64-musl@1.33.0:
     resolution: {integrity: sha512-RYiYbkokw0trfKqqzfF55lginwEPrD3OJDfTuJzFs1MK6iFnDenaz1fqLLtX4ITG3OktJQXOeTaw1awrBAlZPw==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.32.0:
     resolution: {integrity: sha512-8SbC8BR40pS6baCM8sbtYDSwEVQd4JlFTOlaD3gWGHfThTcABnNDBda6eTZeqbofalIJhFx0qKzgHJmcPTnGdw==}
@@ -3574,10 +3538,6 @@ packages:
 
   log-symbols@6.0.0:
     resolution: {integrity: sha512-i24m8rpwhmPIS4zscNzK6MSEhk0DUWa/8iYQWxhffV8jkI4Phvs3F+quL5xvS0gdQR0FyTCMMH33Y78dDTzzIw==}
-    engines: {node: '>=18'}
-
-  log-symbols@7.0.1:
-    resolution: {integrity: sha512-ja1E3yCr9i/0hmBVaM0bfwDjnGy8I/s6PP4DFp+yP+a+mrHO4Rm7DtmnqROTUkHIkqffC84YY7AeqX6oFk0WFg==}
     engines: {node: '>=18'}
 
   lru-cache@5.1.1:
@@ -3730,10 +3690,6 @@ packages:
     resolution: {integrity: sha512-weP+BZ8MVNnlCm8c0Qdc1WSWq4Qn7I+9CJGm7Qali6g44e/PUzbjNqJX5NJ9ljlNMosfJvg1fKEGILklK9cwnw==}
     engines: {node: '>=18'}
 
-  ora@9.4.1:
-    resolution: {integrity: sha512-6VlU9MLXbjVQD04AZCMX28hVtA5bUoadvUqO76MUCVA0ilwJbMiHsITRPfyVm6p/BC0Av/BXMujx39WCe1LEqw==}
-    engines: {node: '>=20'}
-
   orderedmap@2.1.1:
     resolution: {integrity: sha512-TvAWxi0nDe1j/rtMcWcIj94+Ffe6n7zhow33h40SKxmsmozs6dz/e+EajymfoFcHd7sxNn8yHM8839uixMOV6g==}
 
@@ -3764,6 +3720,9 @@ packages:
   parseurl@1.3.3:
     resolution: {integrity: sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==}
     engines: {node: '>= 0.8'}
+
+  password-hash-wasm@0.0.0:
+    resolution: {integrity: sha512-SpVGWB4mMf8VuHM1LqrZWLPtH7B4K2vVqAZ6pAnL/eeTLtPqewwnt0DD7428xUPSDrEWd2SDoLoU4z61gj9sYw==}
 
   path-browserify@1.0.1:
     resolution: {integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==}
@@ -4128,17 +4087,9 @@ packages:
     resolution: {integrity: sha512-UhDfHmA92YAlNnCfhmq0VeNL5bDbiZGg7sZ2IvPsXubGkiNa9EC+tUTsjBRsYUAz87btI6/1wf4XoVvQ3uRnmQ==}
     engines: {node: '>=18'}
 
-  stdin-discarder@0.3.2:
-    resolution: {integrity: sha512-eCPu1qRxPVkl5605OTWF8Wz40b4Mf45NY5LQmVPQ599knfs5QhASUm9GbJ5BDMDOXgrnh0wyEdvzmL//YMlw0A==}
-    engines: {node: '>=18'}
-
   string-width@7.2.0:
     resolution: {integrity: sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ==}
     engines: {node: '>=18'}
-
-  string-width@8.3.0:
-    resolution: {integrity: sha512-ZbmZM0JCihQN91dWnxoipT2KOEyHqEyfRXUyjuRhW8b/xnqPDoq4gWEVApTVa9db2wN8mmoikgFBbjh71+cGeQ==}
-    engines: {node: '>=20'}
 
   stringify-object@5.0.0:
     resolution: {integrity: sha512-zaJYxz2FtcMb4f+g60KsRNFOpVMUyuJgA51Zi5Z1DOTC3S59+OQiVOzE9GZt0x72uBGWKsQIuBKeF9iusmKFsg==}
@@ -4744,29 +4695,25 @@ snapshots:
       hashery: 1.5.1
       keyv: 5.6.0
 
-  '@convex-dev/ai-sdk-provider@0.3.0(ai@7.0.143(zod@4.6.7))(convex@1.47.0(react@19.3.1))':
+  '@convex-dev/ai-sdk-provider@0.3.0(ai@7.0.143(zod@4.6.7))(convex@1.51.0(react@19.3.1))':
     dependencies:
       '@ai-sdk/anthropic': 4.0.40(zod@4.6.7)
       '@ai-sdk/openai': 4.0.45(zod@4.6.7)
       '@ai-sdk/openai-compatible': 3.0.14(zod@4.6.7)
       ai: 7.0.143(zod@4.6.7)
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
       zod: 4.6.7
 
-  '@convex-dev/auth@2.0.0-beta.0(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)':
+  '@convex-dev/auth@2.1.0(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)':
     dependencies:
-      '@babel/code-frame': 7.29.7
-      '@convex-dev/batch-worker': 0.3.6(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
-      '@convex-dev/rate-limiter': 0.3.2(convex@1.47.0(react@19.3.1))(react@19.3.1)
+      '@convex-dev/batch-worker': 0.3.6(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
+      '@convex-dev/rate-limiter': 0.3.2(convex@1.51.0(react@19.3.1))(react@19.3.1)
       '@simplewebauthn/browser': 14.0.0
       '@simplewebauthn/server': 14.0.3
-      argon2id-wasm: 0.0.0-alpha.2
-      chalk: 5.6.2
-      commander: 14.0.3
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
       cookie: 1.1.1
       jose: 5.10.0
-      ora: 9.4.1
+      password-hash-wasm: 0.0.0
     optionalDependencies:
       react: 19.3.1
     transitivePeerDependencies:
@@ -4775,15 +4722,15 @@ snapshots:
       - typescript
       - zod
 
-  '@convex-dev/batch-worker@0.2.2(convex@1.47.0(react@19.3.1))(react@19.3.1)':
+  '@convex-dev/batch-worker@0.2.2(convex@1.51.0(react@19.3.1))(react@19.3.1)':
     dependencies:
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
       react: 19.3.1
 
-  '@convex-dev/batch-worker@0.3.6(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)':
+  '@convex-dev/batch-worker@0.3.6(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)':
     dependencies:
-      convex: 1.47.0(react@19.3.1)
-      convex-helpers: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
+      convex: 1.51.0(react@19.3.1)
+      convex-helpers: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
     transitivePeerDependencies:
       - '@standard-schema/spec'
       - hono
@@ -4791,43 +4738,43 @@ snapshots:
       - typescript
       - zod
 
-  '@convex-dev/eslint-plugin@5.0.0(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(eslint@10.13.0(jiti@2.7.0))':
+  '@convex-dev/eslint-plugin@5.0.0(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(eslint@10.13.0(jiti@2.7.0))':
     dependencies:
       '@typescript-eslint/types': 8.58.2
       '@typescript-eslint/utils': 8.58.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0))
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
     transitivePeerDependencies:
       - eslint
       - supports-color
       - typescript
 
-  '@convex-dev/rate-limiter@0.3.2(convex@1.47.0(react@19.3.1))(react@19.3.1)':
+  '@convex-dev/rate-limiter@0.3.2(convex@1.51.0(react@19.3.1))(react@19.3.1)':
     dependencies:
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
     optionalDependencies:
       react: 19.3.1
 
-  '@convex-dev/react-query@0.1.0(@tanstack/react-query@5.104.3(react@19.3.1))(convex@1.47.0(react@19.3.1))':
+  '@convex-dev/react-query@0.1.0(@tanstack/react-query@5.104.3(react@19.3.1))(convex@1.51.0(react@19.3.1))':
     dependencies:
       '@tanstack/react-query': 5.104.3(react@19.3.1)
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
 
-  '@convex-dev/sharded-counter@0.2.3(convex@1.47.0(react@19.3.1))':
+  '@convex-dev/sharded-counter@0.2.3(convex@1.51.0(react@19.3.1))':
     dependencies:
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
 
-  '@convex-dev/workflow@0.4.10(@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))(react@19.3.1))(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))':
+  '@convex-dev/workflow@0.4.10(@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.51.0(react@19.3.1))(react@19.3.1))(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.51.0(react@19.3.1))':
     dependencies:
-      '@convex-dev/workpool': 0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))(react@19.3.1)
+      '@convex-dev/workpool': 0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.51.0(react@19.3.1))(react@19.3.1)
       async-channel: 0.2.0
-      convex: 1.47.0(react@19.3.1)
-      convex-helpers: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
+      convex: 1.51.0(react@19.3.1)
+      convex-helpers: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
 
-  '@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.47.0(react@19.3.1))(react@19.3.1)':
+  '@convex-dev/workpool@0.4.14(convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7))(convex@1.51.0(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@convex-dev/batch-worker': 0.2.2(convex@1.47.0(react@19.3.1))(react@19.3.1)
-      convex: 1.47.0(react@19.3.1)
-      convex-helpers: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
+      '@convex-dev/batch-worker': 0.2.2(convex@1.51.0(react@19.3.1))(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
+      convex-helpers: 0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7)
     transitivePeerDependencies:
       - react
 
@@ -6940,8 +6887,6 @@ snapshots:
 
   ansis@4.4.0: {}
 
-  argon2id-wasm@0.0.0-alpha.2: {}
-
   argparse@2.0.1: {}
 
   aria-hidden@1.2.6:
@@ -7049,8 +6994,6 @@ snapshots:
 
   cli-spinners@2.9.2: {}
 
-  cli-spinners@3.4.0: {}
-
   clsx@2.1.1: {}
 
   cn@0.2.6: {}
@@ -7086,9 +7029,9 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.47.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7):
+  convex-helpers@0.1.128(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.51.0(react@19.3.1))(hono@4.13.13)(react@19.3.1)(zod@4.6.7):
     dependencies:
-      convex: 1.47.0(react@19.3.1)
+      convex: 1.51.0(react@19.3.1)
     optionalDependencies:
       '@standard-schema/spec': 1.1.0
       hono: 4.13.13
@@ -7096,7 +7039,7 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
       zod: 4.6.7
 
-  convex@1.47.0(react@19.3.1):
+  convex@1.51.0(react@19.3.1):
     dependencies:
       esbuild: 0.27.0
       prettier: 3.9.10
@@ -7883,11 +7826,6 @@ snapshots:
       chalk: 5.6.2
       is-unicode-supported: 1.3.0
 
-  log-symbols@7.0.1:
-    dependencies:
-      is-unicode-supported: 2.1.0
-      yoctocolors: 2.2.0
-
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
@@ -8029,17 +7967,6 @@ snapshots:
       string-width: 7.2.0
       strip-ansi: 7.2.0
 
-  ora@9.4.1:
-    dependencies:
-      chalk: 5.6.2
-      cli-cursor: 5.0.0
-      cli-spinners: 3.4.0
-      is-interactive: 2.0.0
-      is-unicode-supported: 2.1.0
-      log-symbols: 7.0.1
-      stdin-discarder: 0.3.2
-      string-width: 8.3.0
-
   orderedmap@2.1.1: {}
 
   p-limit@2.3.0:
@@ -8063,6 +7990,8 @@ snapshots:
   parse-ms@4.0.0: {}
 
   parseurl@1.3.3: {}
+
+  password-hash-wasm@0.0.0: {}
 
   path-browserify@1.0.1: {}
 
@@ -8530,16 +8459,9 @@ snapshots:
 
   stdin-discarder@0.2.2: {}
 
-  stdin-discarder@0.3.2: {}
-
   string-width@7.2.0:
     dependencies:
       emoji-regex: 10.6.0
-      get-east-asian-width: 1.7.0
-      strip-ansi: 7.2.0
-
-  string-width@8.3.0:
-    dependencies:
       get-east-asian-width: 1.7.0
       strip-ansi: 7.2.0
 

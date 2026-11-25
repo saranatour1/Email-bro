@@ -5,7 +5,7 @@ import { convexGateway } from '@convex-dev/ai-sdk-provider'
 import { components, internal } from '../../_generated/api'
 import { internalMutation, internalQuery } from '../../_generated/server'
 import { userAction, userMutation, userQuery } from '../../lib/functions'
-import { COUNTS, counterKey, counters, track } from '../../lib/pipeline'
+import { COUNTS, counterKey, counters, resetCounters, track } from '../../lib/pipeline'
 import { runBusy } from '../../lib/runBusy'
 import { vCategory, vRoute } from '../../schema'
 import { pingWorker, workerName } from '../mailboxes/gmail/backfill'
@@ -259,9 +259,7 @@ export const clear = internalMutation({
       await ctx.scheduler.runAfter(0, internal.models.backfillRuns.run.clear, { runId })
       return null
     }
-    for (const name of [...COUNTS, ...ROUTE_KEYS.map((r) => `route:${r}`), ...LABEL_KEYS.map((l) => `label:${l}`)]) {
-      await counters.reset(ctx, counterKey(runId, name))
-    }
+    await resetCounters(ctx, runId)
     await ctx.db.delete('backfillRuns', runId)
     return null
   },

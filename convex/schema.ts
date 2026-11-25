@@ -35,7 +35,12 @@ export default defineSchema({
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     image: v.optional(v.string()),
-  }).index('by_email', ['email']),
+    // Set when the user deletes their account: they're signed out and hidden at once, and the deletion worker erases
+    // their data in this (commit) order, then the row itself.
+    deletedAt: v.optional(v.commitTs()),
+  })
+    .index('by_email', ['email'])
+    .index('by_deletedAt', ['deletedAt']),
 
   // One row per connected address. Secrets live in `mailboxSecrets` so no public
   // query can leak them by returning a mailbox doc.

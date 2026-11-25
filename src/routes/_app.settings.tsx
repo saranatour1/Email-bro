@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { track } from '@databuddy/sdk'
+import { reset, track } from '@databuddy/sdk'
 import { useAction, useMutation } from 'convex/react'
 import { usePaginatedQuery, useQuery } from 'convex-helpers/react/cache/hooks'
+import { useAuthActions } from '@convex-dev/auth/react'
 import { ConvexError } from 'convex/values'
-import { Cloud, Globe, Mail } from 'lucide-react'
+import { Cloud, Globe, Mail, Trash2 } from 'lucide-react'
 import { api } from '~/lib/api'
 import { Page } from '~/components/app-shell'
 import { cn } from '~/lib/utils'
@@ -160,8 +161,75 @@ const Settings = () => {
         </Card>
         <CloudflareAccount />
         <DomainForm />
+        <DeleteAccount />
       </div>
     </Page>
+  )
+}
+
+// Two clicks: the button, then the confirmation. The account disappears at once; its data goes in the background.
+const DeleteAccount = () => {
+  const deleteAccount = useMutation(api.users.deleteAccount)
+  const { signOut } = useAuthActions()
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const confirm = async () => {
+    if (deleting) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteAccount({})
+      track('account_deleted')
+      reset()
+      await signOut()
+    } catch (err) {
+      setError(err instanceof ConvexError ? String(err.data) : 'Could not delete your account. Please try again.')
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <Card className="gap-4 border-destructive/40 md:col-span-2">
+      <CardHeader>
+        <CardTitle className="text-sm">Delete account</CardTitle>
+        <CardDescription>
+          Signs you out everywhere and permanently deletes everything Email Bro keeps for you: connected mailboxes and
+          their access, sorted mail, labels, filters, workflows, goals and backfill history. Nothing is deleted from
+          your Gmail or your own domain. You get an email when it's done.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {confirming ? (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span>This can't be undone.</span>
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" variant="destructive" onClick={confirm}>
+                {deleting ? 'Deleting…' : 'Delete everything'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="self-start text-destructive"
+            onClick={() => setConfirming(true)}
+          >
+            <Trash2 /> Delete account and data
+          </Button>
+        )}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

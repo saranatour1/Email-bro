@@ -58,6 +58,7 @@ import type * as models_messages_status from "../models/messages/status.js";
 import type * as models_messages_triage from "../models/messages/triage.js";
 import type * as models_messages_utils from "../models/messages/utils.js";
 import type * as models_users_auth from "../models/users/auth.js";
+import type * as models_users_remove from "../models/users/remove.js";
 
 import type {
   ApiFromModules,
@@ -116,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   "models/messages/triage": typeof models_messages_triage;
   "models/messages/utils": typeof models_messages_utils;
   "models/users/auth": typeof models_users_auth;
+  "models/users/remove": typeof models_users_remove;
 }>;
 
 /**

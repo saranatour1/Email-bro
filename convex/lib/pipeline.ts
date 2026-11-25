@@ -1,10 +1,10 @@
 import { ShardedCounter } from '@convex-dev/sharded-counter'
 import { components } from '../_generated/api'
 import { env } from '../_generated/server'
+import { vCategory, vRoute } from '../schema'
 import type { Infer } from 'convex/values'
 import type { MutationCtx } from '../_generated/server'
 import type { Doc, Id } from '../_generated/dataModel'
-import type { vCategory, vRoute } from '../schema'
 
 // Up to 25 triage steps bump the same totals at once; 8 shards keep those writes from conflicting.
 // Only ever raise this: counts already stored in higher shards would be dropped by a lower number.
@@ -14,6 +14,13 @@ export const counters = new ShardedCounter(components.shardedCounter, { defaultS
 export const COUNTS = ['queued', 'claimed', 'skipped', 'fetched', 'sorted', 'retry', 'failed', 'parked'] as const
 export type Count = (typeof COUNTS)[number]
 export const counterKey = (runId: Id<'backfillRuns'>, name: string) => `${runId}:${name}`
+
+// Zeroes every counter a run can have, before the run is deleted.
+export const resetCounters = async (ctx: MutationCtx, runId: Id<'backfillRuns'>) => {
+  const routes = vRoute.members.map((m) => `route:${m.value}`)
+  const labels = vCategory.members.map((m) => `label:${m.value}`)
+  for (const name of [...COUNTS, ...routes, ...labels]) await counters.reset(ctx, counterKey(runId, name))
+}
 
 // A short keyed hash of an email id: stable per email, meaningless without ID_HASH_KEY.
 export const emailRef = async (externalId: string) => {

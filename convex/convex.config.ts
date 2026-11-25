@@ -20,6 +20,12 @@ const app = defineApp({
     INBOUND_SECRET: v.optional(v.string()),
     // Outbound through Resend for your own domain. Cloudflare sending uses each user's own account instead.
     RESEND_API_KEY: v.optional(v.string()),
+    // Email Bro's own Cloudflare account, for account notices from NOTICE_FROM. The token needs Email Sending only.
+    // Users' mail never goes through it. Without all three, an account is still deleted but no email goes out.
+    CLOUDFLARE_ACCOUNT_ID: v.optional(v.string()),
+    CLOUDFLARE_API_TOKEN: v.optional(v.string()),
+    // An address on a domain onboarded to Cloudflare Email Sending in that account, e.g. "Email Bro <hello@domain.com>".
+    NOTICE_FROM: v.optional(v.string()),
     // AES-256 key (base64url). Each user's data is encrypted with a key derived from it. Never in the database.
     MAIL_ENCRYPTION_KEY: v.optional(v.string()),
     // Secret for the HMAC refs shown instead of real email ids on the backfill tab. Set your own.
@@ -37,7 +43,8 @@ app.use(google, {
 app.use(workflow)
 app.use(batchWorker)
 app.use(shardedCounter)
-// Sends with each user's own Cloudflare credentials, passed per call. No httpPrefix: its routes check one
+// Sends with credentials passed per call: each user's own Cloudflare account, or Email Bro's for account notices. None
+// are bound here, so a call without them can't fall back to another account. No httpPrefix: its routes check one
 // deployment-wide secret, so inbound mail comes through /inbound/email with a secret per user instead.
 app.use(cloudflareEmail)
 

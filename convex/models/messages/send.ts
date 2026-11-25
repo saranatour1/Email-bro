@@ -1,8 +1,8 @@
 import { ConvexError, v } from 'convex/values'
 import { sendEmail } from '@sarant/cloudflare-email-component'
 import { components, internal } from '../../_generated/api'
-import { env } from '../../_generated/server'
 import { userAction } from '../../lib/functions'
+import { resendEmail } from '../../lib/resend'
 import { sendGmail } from '../../lib/gmail'
 import { cloudflareCredentials } from '../../lib/cloudflare'
 import { seal } from '../../lib/crypto'
@@ -35,14 +35,7 @@ const reply = userAction({
     if (mailbox.provider === 'gmail') {
       await sendGmail(ctx, mailbox._id, buildMime(mail), message.threadId)
     } else if (mailbox.sendVia === 'resend') {
-      if (!env.RESEND_API_KEY) throw new ConvexError('RESEND_API_KEY is not set')
-      await post('https://api.resend.com/emails', env.RESEND_API_KEY, {
-        from: mail.from,
-        to: [mail.to],
-        subject: mail.subject,
-        text,
-        headers: threading,
-      })
+      await resendEmail({ from: mail.from, to: [mail.to], subject: mail.subject, text, headers: threading })
     } else {
       // The user's own Cloudflare account. The component keeps a copy sealed with the user's key, for COPY_TTL_MS.
       const cf = await cloudflareCredentials(ctx, ctx.userId)
@@ -64,12 +57,3 @@ const reply = userAction({
 })
 
 export const sendApi = { reply }
-
-const post = async (url: string, token: string, body: unknown) => {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new ConvexError(`Send failed (${res.status}): ${await res.text()}`)
-}

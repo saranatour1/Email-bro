@@ -16,7 +16,8 @@ export const createUser = internalMutation({
         .query('users')
         .withIndex('by_email', (q) => q.eq('email', profile.email))
         .first()
-      if (existing) return existing._id
+      // An account being deleted stays gone: signing in again starts a new one.
+      if (existing && existing.deletedAt === undefined) return existing._id
     }
     return await ctx.db.insert('users', { name: profile.name, email: profile.email, image: profile.picture })
   },

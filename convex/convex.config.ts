@@ -20,6 +20,9 @@ const app = defineApp({
     INBOUND_SECRET: v.optional(v.string()),
     // Outbound through Resend for your own domain. Cloudflare sending uses each user's own account instead.
     RESEND_API_KEY: v.optional(v.string()),
+    // Sender of account notices, sent through Resend, e.g. "Email Bro <hello@yourdomain.com>". Without it (or
+    // RESEND_API_KEY), an account is still deleted but no confirmation email goes out.
+    NOTICE_FROM: v.optional(v.string()),
     // AES-256 key (base64url). Each user's data is encrypted with a key derived from it. Never in the database.
     MAIL_ENCRYPTION_KEY: v.optional(v.string()),
     // Secret for the HMAC refs shown instead of real email ids on the backfill tab. Set your own.

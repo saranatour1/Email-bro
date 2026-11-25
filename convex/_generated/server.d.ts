@@ -35,6 +35,7 @@ type Env = {
   readonly ID_HASH_KEY: string;
   readonly INBOUND_SECRET: string | undefined;
   readonly MAIL_ENCRYPTION_KEY: string | undefined;
+  readonly NOTICE_FROM: string | undefined;
   readonly RESEND_API_KEY: string | undefined;
   readonly SITE_URL: string | undefined;
 };

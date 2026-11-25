@@ -6,7 +6,7 @@ Email Bro is one calm place for several inboxes (Gmail accounts plus addresses o
 
 - **Look it up first.** Before using a library, API or feature that's new to this codebase, read its current docs online. Don't write it from memory: Convex, Convex Auth v2, the AI SDK and the gateway all change quickly.
 - **Check the Convex components directory** ([convex.dev/components](https://www.convex.dev/components)) for a component that already does the job before building it by hand.
-- **Ask "do I need it?"** before adding a scheduled function or a cron. Most work belongs in the mutation or action that triggers it. Today's justified uses: `snooze` wake-ups (`scheduler.runAt`), and handing work from a mutation to an action that calls an external API (Gmail write-back, `syncNow`, backfill batches). There are no crons: Gmail syncs when the app opens.
+- **Ask "do I need it?"** before adding a scheduled function or a cron. Most work belongs in the mutation or action that triggers it. Today's justified uses: `snooze` wake-ups (`scheduler.runAt`), and handing work from a mutation to an action that calls an external API (Gmail write-back, `syncNow`, backfill batches), and starting the account-deletion worker after `deleteAccount` hides the user. There are no crons: Gmail syncs when the app opens.
 - **Keep it simple.** Before adding a function, ask whether you need a new function at all, and whether it needs to return anything.
 
 ## Product principles
@@ -20,15 +20,15 @@ Email Bro is one calm place for several inboxes (Gmail accounts plus addresses o
 
 ## Stack and commands
 
-| Piece        | Choice                                                                                            |
-| ------------ | ------------------------------------------------------------------------------------------------- |
-| Backend      | Convex (`convex/`), cloud dev deployment in `.env.local`                                          |
-| Auth         | Convex Auth **v2** (`@convex-dev/auth@2.1.0`), Google sign-in                                     |
-| Helpers      | `convex-helpers`: use it whenever it already solves the problem (see below)                       |
-| Validation   | Convex `v` validators, plus **Zod** or **ArkType**, whichever the project uses                    |
-| Durable jobs | `@convex-dev/workflow` (per-email triage), `@convex-dev/batch-worker` (Gmail backfill queue)      |
-| AI           | Convex AI Gateway through the AI SDK (`ai` + `@convex-dev/ai-sdk-provider`)                       |
-| Frontend     | TanStack Start file routes, React 19, Tailwind v4, shadcn/ui, TipTap (email bodies, reply editor) |
+| Piece        | Choice                                                                                                         |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| Backend      | Convex (`convex/`), cloud dev deployment in `.env.local`                                                       |
+| Auth         | Convex Auth **v2** (`@convex-dev/auth@2.1.0`), Google sign-in                                                  |
+| Helpers      | `convex-helpers`: use it whenever it already solves the problem (see below)                                    |
+| Validation   | Convex `v` validators, plus **Zod** or **ArkType**, whichever the project uses                                 |
+| Durable jobs | `@convex-dev/workflow` (per-email triage), `@convex-dev/batch-worker` (Gmail backfill queue, account deletion) |
+| AI           | Convex AI Gateway through the AI SDK (`ai` + `@convex-dev/ai-sdk-provider`)                                    |
+| Frontend     | TanStack Start file routes, React 19, Tailwind v4, shadcn/ui, TipTap (email bodies, reply editor)              |
 
 ```bash
 pnpm dev                  # convex dev + vite on :3000
@@ -86,11 +86,13 @@ convex/
       manage.ts          # list, create, update, remove, setOnMessage (public); forTriage, names
     users/
       auth.ts            # me (public); createUser, onSignIn (Convex Auth callbacks)
+      remove.ts          # deleteAccount (public); batch worker that erases the data, then emails the user
   lib/                   # helpers reused across tables
     functions.ts         # userQuery / userMutation / userAction (auth custom functions)
     gmail.ts             # Gmail REST + OAuth token helpers
     mail.ts              # MIME parsing and building (in memory only)
     crypto.ts            # AES-GCM for domain mail, SHA-256 dedupe keys
+    resend.ts            # send one email through Resend (domain replies, account notices)
   schema.ts  http.ts  convex.config.ts  auth.config.ts
 ```
 

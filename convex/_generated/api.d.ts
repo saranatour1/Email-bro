@@ -30,6 +30,7 @@ import type * as lib_mail from "../lib/mail.js";
 import type * as lib_markdown from "../lib/markdown.js";
 import type * as lib_oauthError from "../lib/oauthError.js";
 import type * as lib_pipeline from "../lib/pipeline.js";
+import type * as lib_resend from "../lib/resend.js";
 import type * as lib_runBusy from "../lib/runBusy.js";
 import type * as lib_snooze from "../lib/snooze.js";
 import type * as lib_triagePatch from "../lib/triagePatch.js";
@@ -58,6 +59,7 @@ import type * as models_messages_status from "../models/messages/status.js";
 import type * as models_messages_triage from "../models/messages/triage.js";
 import type * as models_messages_utils from "../models/messages/utils.js";
 import type * as models_users_auth from "../models/users/auth.js";
+import type * as models_users_remove from "../models/users/remove.js";
 
 import type {
   ApiFromModules,
@@ -88,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   "lib/markdown": typeof lib_markdown;
   "lib/oauthError": typeof lib_oauthError;
   "lib/pipeline": typeof lib_pipeline;
+  "lib/resend": typeof lib_resend;
   "lib/runBusy": typeof lib_runBusy;
   "lib/snooze": typeof lib_snooze;
   "lib/triagePatch": typeof lib_triagePatch;
@@ -116,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   "models/messages/triage": typeof models_messages_triage;
   "models/messages/utils": typeof models_messages_utils;
   "models/users/auth": typeof models_users_auth;
+  "models/users/remove": typeof models_users_remove;
 }>;
 
 /**

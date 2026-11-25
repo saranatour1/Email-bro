@@ -30,7 +30,6 @@ import type * as lib_mail from "../lib/mail.js";
 import type * as lib_markdown from "../lib/markdown.js";
 import type * as lib_oauthError from "../lib/oauthError.js";
 import type * as lib_pipeline from "../lib/pipeline.js";
-import type * as lib_resend from "../lib/resend.js";
 import type * as lib_runBusy from "../lib/runBusy.js";
 import type * as lib_snooze from "../lib/snooze.js";
 import type * as lib_triagePatch from "../lib/triagePatch.js";
@@ -90,7 +89,6 @@ declare const fullApi: ApiFromModules<{
   "lib/markdown": typeof lib_markdown;
   "lib/oauthError": typeof lib_oauthError;
   "lib/pipeline": typeof lib_pipeline;
-  "lib/resend": typeof lib_resend;
   "lib/runBusy": typeof lib_runBusy;
   "lib/snooze": typeof lib_snooze;
   "lib/triagePatch": typeof lib_triagePatch;

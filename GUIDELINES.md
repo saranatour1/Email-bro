@@ -86,13 +86,12 @@ convex/
       manage.ts          # list, create, update, remove, setOnMessage (public); forTriage, names
     users/
       auth.ts            # me (public); createUser, onSignIn (Convex Auth callbacks)
-      remove.ts          # deleteAccount (public); batch worker that erases the data, then emails the user
+      remove.ts          # deleteAccount (public); batch worker that erases the data; goodbye email via Cloudflare
   lib/                   # helpers reused across tables
     functions.ts         # userQuery / userMutation / userAction (auth custom functions)
     gmail.ts             # Gmail REST + OAuth token helpers
     mail.ts              # MIME parsing and building (in memory only)
     crypto.ts            # AES-GCM for domain mail, SHA-256 dedupe keys
-    resend.ts            # send one email through Resend (domain replies, account notices)
   schema.ts  http.ts  convex.config.ts  auth.config.ts
 ```
 

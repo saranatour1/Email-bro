@@ -1,12 +1,13 @@
 import { v } from 'convex/values'
 import { defineBatchWorkerValidators, ping } from '@convex-dev/batch-worker'
+import { sendEmail } from '@sarant/cloudflare-email-component'
 import { literals } from 'convex-helpers/validators'
 import { components, internal } from '../../_generated/api'
 import { env, internalAction, internalMutation, internalQuery } from '../../_generated/server'
+import { seal } from '../../lib/crypto'
 import { userMutation } from '../../lib/functions'
 import { wideEvent } from '../../lib/log'
 import { resetCounters } from '../../lib/pipeline'
-import { resendEmail } from '../../lib/resend'
 import { workerName } from '../mailboxes/gmail/backfill'
 import type { Infer } from 'convex/values'
 import type { MutationCtx, QueryCtx } from '../../_generated/server'
@@ -216,15 +217,31 @@ If you come back, signing in starts a new, empty account.
 
 Email Bro`
 
-// The address is only in this job's args; the user row is already gone.
+// The component's copies of notices are kept under this owner, never under a user.
+const NOTICES = 'account-notices'
+
+// Sent from Email Bro's own domain through Cloudflare. The address is only in this job's args; the user row is gone.
 export const sendGoodbye = internalAction({
   args: { email: v.string(), name: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (_ctx, { email, name }) => {
-    const from = env.RESEND_API_KEY ? env.NOTICE_FROM : undefined
-    if (from)
-      await resendEmail({ from, to: [email], subject: 'Your Email Bro data has been deleted', text: goodbye(name) })
-    wideEvent({ job: 'account.goodbye', sent: !!from }).emit()
+  handler: async (ctx, { email, name }) => {
+    const { CLOUDFLARE_ACCOUNT_ID: accountId, CLOUDFLARE_API_TOKEN: apiToken, NOTICE_FROM: from } = env
+    if (!accountId || !apiToken || !from) {
+      wideEvent({ job: 'account.goodbye', sent: false }).emit()
+      return null
+    }
+    const result = await sendEmail(ctx, components.cloudflareEmail, {
+      owner: NOTICES,
+      accountId,
+      apiToken,
+      email: { from, to: email, subject: 'Your Email Bro data has been deleted', text: goodbye(name) },
+      seal: (text) => seal(NOTICES, 'mail-copy', text),
+    })
+    // The copy holds their address, the last thing we had of theirs.
+    await ctx.runMutation(components.cloudflareEmail.lib.remove, { owner: NOTICES, emailId: result.emailId })
+    const { errorCode, httpStatus } = result
+    wideEvent({ job: 'account.goodbye', sent: !result.error, errorCode, httpStatus }).emit()
+    if (result.error) throw new Error(`Cloudflare didn't send the goodbye email (${httpStatus ?? errorCode})`)
     return null
   },
 })

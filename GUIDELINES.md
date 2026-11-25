@@ -237,7 +237,7 @@ Follow the official docs ([overview](https://tanstack.com/start/latest/docs/fram
 
 | Route file                       | URL                      | Purpose                                                        |
 | -------------------------------- | ------------------------ | -------------------------------------------------------------- |
-| `index.tsx`                      | `/`                      | Redirects to `/mail/focus`                                     |
+| `index.tsx`                      | `/`                      | Public landing page (server-rendered); links to `/mail/focus`  |
 | `_app.tsx`                       | (pathless)               | Auth gate, top bar, sidebar; `ssr: false`; validates `?inbox=` |
 | `_app.mail.$view.tsx`            | `/mail/$view`            | List or board; unknown views give `notFound()`                 |
 | `_app.mail.$view.$messageId.tsx` | `/mail/$view/$messageId` | Reader in the parent's `<Outlet />`                            |

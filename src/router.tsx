@@ -1,6 +1,6 @@
 import { createRouter } from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
-import { routerWithQueryClient } from '@tanstack/react-router-with-query'
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { ConvexQueryClient } from '@convex-dev/react-query'
 import { ConvexAuthProvider } from '@convex-dev/auth/react'
 import { ConvexQueryCacheProvider } from 'convex-helpers/react/cache/provider'
@@ -21,24 +21,24 @@ export const getRouter = () => {
   })
   convexQueryClient.connect(queryClient)
 
-  const router = routerWithQueryClient(
-    createRouter({
-      routeTree,
-      defaultPreload: 'intent',
-      context: { queryClient },
-      scrollRestoration: true,
-      defaultPreloadStaleTime: 0, // Let React Query handle all caching
-      defaultErrorComponent: (err) => <p>{err.error instanceof Error ? err.error.stack : String(err.error)}</p>,
-      defaultNotFoundComponent: () => <p>not found</p>,
-      Wrap: ({ children }) => (
-        <ConvexAuthProvider client={convexQueryClient.convexClient} api={api.auth}>
-          {/* Keeps query subscriptions alive after a page unmounts, so going back renders instantly. */}
-          <ConvexQueryCacheProvider>{children}</ConvexQueryCacheProvider>
-        </ConvexAuthProvider>
-      ),
-    }),
-    queryClient,
-  )
+  const router = createRouter({
+    routeTree,
+    defaultPreload: 'intent',
+    context: { queryClient },
+    scrollRestoration: true,
+    defaultPreloadStaleTime: 0, // Let React Query handle all caching
+    defaultErrorComponent: (err) => <p>{err.error instanceof Error ? err.error.stack : String(err.error)}</p>,
+    defaultNotFoundComponent: () => <p>not found</p>,
+    Wrap: ({ children }) => (
+      <ConvexAuthProvider client={convexQueryClient.convexClient} api={api.auth}>
+        {/* Keeps query subscriptions alive after a page unmounts, so going back renders instantly. */}
+        <ConvexQueryCacheProvider>{children}</ConvexQueryCacheProvider>
+      </ConvexAuthProvider>
+    ),
+  })
+  // Streams queries from server rendering into the client cache, wraps the app in QueryClientProvider,
+  // and turns `redirect()` thrown from a query or mutation into a navigation.
+  setupRouterSsrQueryIntegration({ router, queryClient })
 
   return router
 }

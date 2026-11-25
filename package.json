@@ -27,7 +27,7 @@
     "@sarant/cloudflare-email-component": "0.4.0",
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-router": "^1.170.19",
-    "@tanstack/react-router-with-query": "^1.130.17",
+    "@tanstack/react-router-ssr-query": "1.167.3",
     "@tanstack/react-start": "^1.168.36",
     "@tiptap/extensions": "^3.32.0",
     "@tiptap/pm": "^3.32.0",

@@ -220,6 +220,12 @@ Email Bro`
 // The component's copies of notices are kept under this owner, never under a user.
 const NOTICES = 'account-notices'
 
+// NOTICE_FROM is "Name <address>" or a bare address. Cloudflare refuses the first as written, so pass its parts.
+const sender = (from: string) => {
+  const [, name = '', address = from] = /^(.*)<(.+)>$/.exec(from.trim()) ?? []
+  return name.trim() ? { name: name.trim(), address: address.trim() } : address.trim()
+}
+
 // Sent from Email Bro's own domain through Cloudflare. The address is only in this job's args; the user row is gone.
 export const sendGoodbye = internalAction({
   args: { email: v.string(), name: v.optional(v.string()) },
@@ -234,7 +240,7 @@ export const sendGoodbye = internalAction({
       owner: NOTICES,
       accountId,
       apiToken,
-      email: { from, to: email, subject: 'Your Email Bro data has been deleted', text: goodbye(name) },
+      email: { from: sender(from), to: email, subject: 'Your Email Bro data has been deleted', text: goodbye(name) },
       seal: (text) => seal(NOTICES, 'mail-copy', text),
     })
     // The copy holds their address, the last thing we had of theirs.

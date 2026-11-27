@@ -3,15 +3,11 @@
   "name": "email-bro",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
-  // src/server.ts wraps @tanstack/react-start/server-entry to report AI crawlers to Databuddy.
   "main": "src/server.ts",
   "preview_urls": true,
   // Needed by `wrangler preview`; settings at the top level apply to previews too.
   "previews": {},
-  "vars": {
-    // Databuddy website id for AI crawler tracking (src/server.ts). Public, the same id the browser script ships.
-    "DATABUDDY_WEBSITE_ID": "7d00b4bf-29fe-4d3c-93c4-6e9e8c289199",
-  },
+  "vars": { "DATABUDDY_WEBSITE_ID": "7d00b4bf-29fe-4d3c-93c4-6e9e8c289199" },
   "observability": {
     "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true },
     "traces": { "enabled": true, "head_sampling_rate": 1, "persist": true },

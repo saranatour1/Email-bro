@@ -7,7 +7,21 @@ const LLMS_TXT = `# Email Bro
 
 > Email Bro puts several Gmail accounts, and optionally an address on your own domain, into one inbox. Jev, an AI model, sorts every incoming email, so the default Focus view shows only the mail that needs you.
 
-Email Bro is open source and built on Convex and TanStack Start. It stores as little as possible: for Gmail, only the message id, the subject and the sender's name. An email's body is fetched from Gmail when you open it and is never saved.
+Email Bro is open source and built on Convex. It stores as little as possible: for Gmail, only the message id, the subject and the sender's name. An email's body is fetched from Gmail when you open it and is never saved.
+
+## Built on Convex
+
+The whole backend runs on [Convex](https://convex.dev): the database, server functions, sign-in, background jobs and AI calls.
+
+- Database and live queries: the inbox updates on its own as Jev sorts each email.
+- Convex Auth: sign-in with Google.
+- Workflow component: each new email is sorted by a durable workflow that retries if a step fails.
+- Batch worker component: backfills older Gmail mail and erases an account's data when it's deleted.
+- Sharded counter component: the live progress counts while a backfill runs.
+- Convex AI Gateway: Jev and the AI SDK run through it, with zero data retention.
+- File storage: the encrypted copy of mail sent to your own domain.
+
+The frontend is TanStack Start and React, served from Cloudflare Workers.
 
 ## How it sorts mail
 
